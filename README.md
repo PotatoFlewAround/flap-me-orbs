@@ -21,7 +21,7 @@ Pick a control mode, then **Play** or **Practice**.
 - **Green** — tiny (smaller hitbox)
 - **Gold** — double score
 - **Orange** — dash (hold left click to burst toward the cursor)
-- **?** — switches you to mouse-drag
+- **White** — switches you to mouse-drag
 
 Practice is a slow looping course that walks through every power-up. Crashes bounce you back. Leave with **Menu** or **Esc**. Scores stay local to this machine.
 

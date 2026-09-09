@@ -120,7 +120,7 @@
         <button class="choice" type="button" data-mode="swing">Web</button>
       </div>
       <div class="orbs">
-        <div><b style="color:#e8eefc">? orbs</b> mouse-drag</div>
+        <div><b style="color:#f4f7ff">White</b> mouse-drag</div>
         <div><b style="color:#ff8ac8">Pink</b> shield</div>
         <div><b style="color:#7ee7ff">Cyan</b> drift</div>
         <div><b style="color:#9dffb0">Green</b> tiny</div>
@@ -924,20 +924,12 @@
       }
       for (const orb of orbs) {
         const pulse = 1 + Math.sin(performance.now() / 140 + orb.x * 0.05) * 0.1;
-        const mysteryHue = (performance.now() / 12 + orb.x) % 360;
         const isUnknown = orb.type === "unknown-mouse";
-        const color = isUnknown ? `hsl(${mysteryHue}, 80%, 78%)` : POWERS[orb.type].color;
+        const color = isUnknown ? "#f4f7ff" : POWERS[orb.type].color;
         const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, ORB_R * 3);
         g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * 3.2 * pulse, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = color; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * pulse, 0, Math.PI * 2); ctx.fill();
-        if (isUnknown) {
-          ctx.fillStyle = "#071018";
-          ctx.font = "bold 14px Segoe UI, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText("?", orb.x, orb.y + 1);
-        }
         if (practice && ORB_LABELS[orb.type]) {
           ctx.fillStyle = "rgba(232,238,252,0.92)";
           ctx.font = "bold 11px Segoe UI, sans-serif";
