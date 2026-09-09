@@ -75,7 +75,7 @@
       background: var(--accent); color: #041018; font: inherit; font-weight: 700; cursor: pointer;
     }
     .ghost { margin-top: 8px; background: rgba(255,255,255,0.08); color: var(--ink); }
-    .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
     .choice {
       width: 100%; padding: 10px 4px; border: 1px solid rgba(255,255,255,0.12);
       border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--ink);
@@ -113,10 +113,9 @@
     <div id="banner" class="banner"></div>
     <section id="start" class="panel">
       <h1>Flap me Orbs</h1>
-      <p>Pick a mode, then Play. Practice is a slow looping course that walks through every power-up. Crashes bounce you back.</p>
+      <p>Pick Jump or Web, then Play. White orbs give a short mouse-drag. Practice walks through every power-up. Crashes bounce you back.</p>
       <div class="controls" id="modeChoices">
         <button class="choice on" type="button" data-mode="tap">Jump</button>
-        <button class="choice" type="button" data-mode="mouse">Mouse drag</button>
         <button class="choice" type="button" data-mode="swing">Web</button>
       </div>
       <div class="orbs">
@@ -180,6 +179,7 @@
       tiny: { name: "Tiny", color: "#9dffb0", duration: 6, freq: 640 },
       gold: { name: "Double", color: "#ffe08a", duration: 6, freq: 980 },
       dash: { name: "Dash", color: "#ff7a4a", duration: 8, freq: 300 },
+      mouse: { name: "Mouse", color: "#f4f7ff", duration: 7, freq: 520 },
     };
     const ORB_TYPES = Object.keys(POWERS);
     const ORB_LABELS = {
@@ -188,7 +188,7 @@
       tiny: "TINY",
       gold: "DOUBLE",
       dash: "DASH",
-      "unknown-mouse": "MOUSE",
+      mouse: "MOUSE",
     };
     const PRACTICE_COURSE = [
       { orb: null, title: "Warm up", hint: "Warm up", gap: 228 },
@@ -208,17 +208,16 @@
       { orb: "dash", title: "Dash", hint: "Dash — hold left click", gap: 232 },
       { orb: null, title: "Dash", hint: "Burst at the cursor", gap: 196 },
       { orb: null, title: "Dash", hint: null, gap: 196 },
-      { orb: "unknown-mouse", title: "Mouse", hint: "Mouse — drag to fly", gap: 240 },
-      { orb: null, title: "Mouse", hint: "Hold and drag", gap: 214, keepMouse: true },
-      { orb: null, title: "Mouse", hint: null, gap: 214, keepMouse: true },
+      { orb: "mouse", title: "Mouse", hint: "Mouse — hold and drag", gap: 240 },
+      { orb: null, title: "Mouse", hint: "Release to fall", gap: 214 },
+      { orb: null, title: "Mouse", hint: null, gap: 214 },
       { orb: null, title: "Web", hint: "Web — hold a pipe", gap: 244, mode: "swing" },
       { orb: null, title: "Web", hint: "Release to let go", gap: 232, mode: "swing" },
       { orb: null, title: "Web", hint: null, gap: 232, mode: "swing" },
-      { orb: null, title: "Reset", hint: "Back to your mode", gap: 220, restore: true },
+      { orb: null, title: "Jump", hint: "Back to jump", gap: 220 },
     ];
     const MODES = {
       tap: { name: "Jump", color: "#7ee7ff" },
-      mouse: { name: "Mouse drag", color: "#c5b7ff" },
       swing: { name: "Web", color: "#ffb07a" },
     };
     const LEVELS = [
@@ -285,13 +284,16 @@
       } else {
         easeWebCourse();
       }
-      if (controlMode !== "mouse") pointerHeld = false;
       syncJumpButton();
       controlLine.innerHTML = `Fly <strong>${MODES[controlMode].name}</strong>`;
       if (announce) {
         showBanner(MODES[controlMode].name);
-        beep(controlMode === "swing" ? 280 : controlMode === "mouse" ? 520 : 400, 0.14, "triangle", 0.055);
+        beep(controlMode === "swing" ? 280 : 400, 0.14, "triangle", 0.055);
       }
+    }
+
+    function usingMouse() {
+      return power === "mouse";
     }
 
     function easeWebCourse() {
@@ -302,7 +304,7 @@
     }
 
     function syncJumpButton() {
-      jumpBtn.classList.toggle("hidden", !(mode === "play" && (controlMode === "tap" || controlMode === "swing")));
+      jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse() && (controlMode === "tap" || controlMode === "swing")));
     }
 
     function syncModeChoices() {
@@ -396,8 +398,6 @@
         hint: lesson ? lesson.hint : null,
         title: lesson ? lesson.title : null,
         lessonMode: lesson ? lesson.mode : null,
-        restore: lesson ? lesson.restore : false,
-        keepMouse: lesson ? lesson.keepMouse : false,
         applied: false,
       });
       if (lesson) {
@@ -411,11 +411,10 @@
         return;
       }
       if (Math.random() < 0.78) {
-        const mystery = Math.random() < 0.22;
         orbs.push({
           x: x + PIPE_W / 2,
           y: top + gap / 2 + (Math.random() - 0.5) * 14,
-          type: mystery ? "unknown-mouse" : ORB_TYPES[Math.floor(Math.random() * ORB_TYPES.length)],
+          type: ORB_TYPES[Math.floor(Math.random() * ORB_TYPES.length)],
         });
       }
     }
@@ -458,7 +457,7 @@
       dashHoldTime = -1; dashUsedThisHold = false; dashBoost = 0;
       practiceSpawnIndex = 0;
       practiceTitle = practice ? "Training range" : level().name;
-      setControl(selectedMode);
+      setControl(practice ? "tap" : selectedMode);
       updatePowerHud(); updateMeta();
       const spacing = practice ? 360 : level().spacing;
       spawnPipe(width + 50);
@@ -474,17 +473,15 @@
     }
 
     function collect(orb) {
-      if (orb.type === "unknown-mouse") {
-        burst(orb.x, orb.y, 20, "#f4f7ff");
-        setControl("mouse", true);
-        return;
-      }
       const spec = POWERS[orb.type];
+      if (!spec) return;
       if (orb.type === "shield") shield = true;
+      if (orb.type === "mouse") rope = null;
       const hold = spec.duration * (practice ? 1.35 : 1);
       power = orb.type; powerMax = hold; powerLeft = hold;
       burst(orb.x, orb.y, 16, spec.color); beep(spec.freq, 0.12, "sine", 0.06);
       updatePowerHud();
+      syncJumpButton();
     }
 
     function updatePowerHud() {
@@ -501,6 +498,7 @@
       if (power === "tiny") return 130;
       if (power === "gold") return 48;
       if (power === "dash") return 18;
+      if (power === "mouse") return 210;
       return 40 + levelIndex * 40;
     }
     function hitRadius() { return (power === "tiny" ? BIRD_R * 0.68 : BIRD_R) * 0.72; }
@@ -637,7 +635,7 @@
       mode = "play";
       leaveBtn.classList.toggle("hidden", !practice);
       if (practice) showBanner("Practice range");
-      if (controlMode === "mouse") {
+      if (usingMouse()) {
         birdY = Math.max(40, Math.min(height - GROUND - 40, mouseY || height * 0.42));
         birdV = 0; birdVx = 0;
       }
@@ -659,7 +657,7 @@
 
     function flap() {
       if (mode === "ready" || mode === "over") startGame();
-      if (mode !== "play" || controlMode === "mouse") return;
+      if (mode !== "play" || usingMouse()) return;
       birdV = power === "drift" ? FLAP * 0.82 : FLAP;
       burst(birdX, birdY, 7, `hsla(${birdHue()}, 90%, 70%, 1)`);
       beep(520, 0.08, "square", 0.04);
@@ -725,8 +723,13 @@
         if (power) {
           powerLeft -= dt;
           if (powerLeft <= 0) {
+            const wasMouse = power === "mouse";
             if (power !== "shield") power = null;
             powerLeft = 0; updatePowerHud();
+            if (wasMouse) {
+              pointerHeld = false;
+              syncJumpButton();
+            }
           } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
         }
         invuln = Math.max(0, invuln - dt);
@@ -741,7 +744,7 @@
         if (dashBoost > 0) dashBoost = Math.max(0, dashBoost - dt);
         const L = level();
         const gravity = power === "drift" ? L.gravity * 0.48 : L.gravity;
-        if (controlMode === "mouse") {
+        if (usingMouse()) {
           const radius = hitRadius();
           if (pointerHeld && dashBoost <= 0) {
             const targetY = Math.max(radius + 4, Math.min(height - GROUND - radius - 4, mouseY));
@@ -794,8 +797,8 @@
           pipe.x -= speed * dt;
           if (practice && !pipe.applied && pipe.x < width * 0.82) {
             pipe.applied = true;
-            if (pipe.restore) setControl(selectedMode, false);
-            else if (pipe.lessonMode) setControl(pipe.lessonMode, false);
+            if (pipe.lessonMode) setControl(pipe.lessonMode, false);
+            else setControl("tap", false);
             if (pipe.title) {
               practiceTitle = pipe.title;
               mapLine.textContent = pipe.title;
@@ -924,8 +927,7 @@
       }
       for (const orb of orbs) {
         const pulse = 1 + Math.sin(performance.now() / 140 + orb.x * 0.05) * 0.1;
-        const isUnknown = orb.type === "unknown-mouse";
-        const color = isUnknown ? "#f4f7ff" : POWERS[orb.type].color;
+        const color = POWERS[orb.type].color;
         const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, ORB_R * 3);
         g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * 3.2 * pulse, 0, Math.PI * 2); ctx.fill();
@@ -989,7 +991,7 @@
       pointerHeld = true;
       dashHoldTime = 0;
       dashUsedThisHold = false;
-      if (controlMode === "mouse") {
+      if (usingMouse()) {
         if (mode === "ready" || mode === "over") startGame();
         return;
       }
@@ -1024,7 +1026,7 @@
       if (event.code !== "Space" && event.code !== "Enter") return;
       event.preventDefault();
       if (event.repeat) return;
-      if (controlMode !== "mouse") flap();
+      if (!usingMouse()) flap();
     });
     jumpBtn.addEventListener("click", (event) => { event.stopPropagation(); flap(); });
     leaveBtn.addEventListener("click", (event) => {
@@ -1040,15 +1042,15 @@
     document.getElementById("playBtn").addEventListener("click", (event) => {
       event.stopPropagation();
       startGame(false);
-      if (controlMode !== "mouse") flap();
+      if (!usingMouse()) flap();
     });
     document.getElementById("practiceBtn").addEventListener("click", (event) => {
       event.stopPropagation();
       startGame(true);
-      if (controlMode !== "mouse") flap();
+      if (!usingMouse()) flap();
     });
     document.getElementById("retryBtn").addEventListener("click", (event) => {
-      event.stopPropagation(); startGame(false); if (controlMode !== "mouse") flap();
+      event.stopPropagation(); startGame(false); if (!usingMouse()) flap();
     });
     document.getElementById("menuBtn").addEventListener("click", (event) => {
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");

@@ -11,19 +11,18 @@ Pick a control mode, then **Play** or **Practice**.
 **Modes**
 
 - **Jump** — tap / click / Space to flap
-- **Mouse drag** — hold and drag to move; release to fall
 - **Web** — keep your jump, and hold click on a pipe to sling
 
 **Orbs**
 
+- **White** — mouse-drag for a few seconds (hold and drag; release to fall)
 - **Pink** — shield (survives one hit)
 - **Cyan** — drift (slower fall)
 - **Green** — tiny (smaller hitbox)
 - **Gold** — double score
 - **Orange** — dash (hold left click to burst toward the cursor)
-- **White** — switches you to mouse-drag
 
-Practice is a slow looping course that walks through every power-up. Crashes bounce you back. Leave with **Menu** or **Esc**. Scores stay local to this machine.
+Practice is a slow looping course that starts in Jump. Web turns on for its own station. Crashes bounce you back. Leave with **Menu** or **Esc**. Scores stay local to this machine.
 
 ## Run locally
 
