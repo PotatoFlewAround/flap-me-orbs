@@ -1,0 +1,11 @@
+{
+  "name": "Flap me Orbs",
+  "install": "npm install",
+  "start": "pgrep -x Xvfb >/dev/null 2>&1 || (Xvfb :99 -screen 0 1280x720x24 -ac >/tmp/xvfb.log 2>&1 &); for i in $(seq 1 20); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && exit 0; sleep 0.5; done; echo 'Xvfb failed to become ready on :99' >&2; exit 1",
+  "terminals": [
+    {
+      "name": "game",
+      "command": "DISPLAY=:99 npx electron . --no-sandbox"
+    }
+  ]
+}
