@@ -45,6 +45,23 @@
     .power.hidden { display: none; }
     .bar { height: 3px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,0.12); }
     .bar > span { display: block; height: 100%; width: 0%; background: currentColor; }
+    .legend {
+      margin-top: 8px; min-width: 148px; padding: 10px 12px 8px;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+      background: rgba(8,10,18,0.55); text-align: left;
+    }
+    .legend h2 {
+      margin-bottom: 6px; color: var(--ink); font-size: 0.68rem;
+      letter-spacing: 0.14em; text-transform: uppercase; text-align: right;
+    }
+    .legend-row {
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      margin: 4px 0; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.04em;
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px;
+      box-shadow: 0 0 8px currentColor;
+    }
     .banner {
       position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
       font-size: clamp(22px, 5vw, 36px); font-weight: 750; letter-spacing: 0.08em;
@@ -96,6 +113,20 @@
       font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; cursor: pointer; pointer-events: auto;
     }
+    .range-row {
+      display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+      color: var(--muted); font-size: 0.76rem; text-align: left;
+    }
+    .range-row label { flex: 0 0 auto; letter-spacing: 0.06em; text-transform: uppercase; }
+    .range-row input[type="range"] { flex: 1; accent-color: #ffb07a; }
+    .range-row span { min-width: 2.4em; text-align: right; color: var(--ink); }
+    .web-range-hud {
+      position: absolute; left: 20px; bottom: 28px; z-index: 3;
+      width: min(220px, calc(100vw - 140px)); padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
+      background: rgba(8,10,18,0.7); pointer-events: auto;
+    }
+    .web-range-hud .range-row { margin: 0; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -109,14 +140,28 @@
       <div id="bestLine" class="hud-line">Best 0</div>
       <div id="controlLine" class="hud-line">Fly <strong>Jump</strong></div>
       <div id="powerHud" class="power hidden"><span id="powerName">Ready</span><div class="bar"><span id="powerBar"></span></div></div>
+      <div class="legend" aria-label="Orb legend">
+        <h2>Orbs</h2>
+        <div class="legend-row">White mouse-drag<span class="legend-dot" style="background:#f4f7ff;color:#f4f7ff"></span></div>
+        <div class="legend-row">Pink shield<span class="legend-dot" style="background:#ff8ac8;color:#ff8ac8"></span></div>
+        <div class="legend-row">Cyan drift<span class="legend-dot" style="background:#7ee7ff;color:#7ee7ff"></span></div>
+        <div class="legend-row">Green tiny<span class="legend-dot" style="background:#9dffb0;color:#9dffb0"></span></div>
+        <div class="legend-row">Gold double<span class="legend-dot" style="background:#ffe08a;color:#ffe08a"></span></div>
+        <div class="legend-row">Orange dash<span class="legend-dot" style="background:#ff7a4a;color:#ff7a4a"></span></div>
+      </div>
     </div>
     <div id="banner" class="banner"></div>
     <section id="start" class="panel">
       <h1>Flap me Orbs</h1>
-      <p>Pick Jump or Web, then Play. White orbs give a short mouse-drag. Practice walks through every power-up. Crashes bounce you back.</p>
+      <p>Pick Jump or Web, then Play. In Web, you can only sling a wall inside the dashed reach circle. Practice walks through every power-up.</p>
       <div class="controls" id="modeChoices">
         <button class="choice on" type="button" data-mode="tap">Jump</button>
         <button class="choice" type="button" data-mode="swing">Web</button>
+      </div>
+      <div class="range-row">
+        <label for="webRangeMenu">Web reach</label>
+        <input id="webRangeMenu" type="range" min="140" max="340" step="10" />
+        <span id="webRangeMenuVal">210</span>
       </div>
       <div class="orbs">
         <div><b style="color:#f4f7ff">White</b> mouse-drag</div>
@@ -131,6 +176,13 @@
       <button id="practiceBtn" class="ghost" type="button">Practice</button>
     </section>
     <button id="leaveBtn" class="leave hidden" type="button">Menu</button>
+    <div id="webRangeHud" class="web-range-hud hidden">
+      <div class="range-row">
+        <label for="webRangePlay">Web reach</label>
+        <input id="webRangePlay" type="range" min="140" max="340" step="10" />
+        <span id="webRangePlayVal">210</span>
+      </div>
+    </div>
     <button id="jumpBtn" class="jump hidden" type="button">Jump</button>
     <section id="over" class="panel hidden">
       <h1>Crash</h1>
@@ -165,9 +217,16 @@
     const jumpBtn = document.getElementById("jumpBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const controlLine = document.getElementById("controlLine");
+    const webRangeHud = document.getElementById("webRangeHud");
+    const webRangeMenu = document.getElementById("webRangeMenu");
+    const webRangePlay = document.getElementById("webRangePlay");
+    const webRangeMenuVal = document.getElementById("webRangeMenuVal");
+    const webRangePlayVal = document.getElementById("webRangePlayVal");
 
     const BIRD_R = 16, PIPE_W = 70, GROUND = 88, ORB_R = 11, FLAP = -620, MAX_FALL = 920;
-    const MAX_ROPE = 640;
+    const WEB_RADIUS_MIN = 140;
+    const WEB_RADIUS_MAX = 340;
+    const WEB_RADIUS_DEFAULT = 210;
     const WEB_GAP = 64;
     const WEB_SPACING = 56;
     const DASH_HOLD = 0.18;
@@ -272,6 +331,9 @@
     let practice = false, practiceSpawnIndex = 0, practiceTitle = "Training range";
     let selectedMode = localStorage.getItem("flux-bird-mode") || "tap";
     if (!MODES[selectedMode]) selectedMode = "tap";
+    let webRadius = Number(localStorage.getItem("flux-bird-web-radius") || WEB_RADIUS_DEFAULT);
+    if (!Number.isFinite(webRadius)) webRadius = WEB_RADIUS_DEFAULT;
+    webRadius = Math.max(WEB_RADIUS_MIN, Math.min(WEB_RADIUS_MAX, webRadius));
     let best = Number(localStorage.getItem("flux-bird-best") || 0);
     playerName.value = localStorage.getItem("flux-bird-name") || "";
 
@@ -285,6 +347,7 @@
         easeWebCourse();
       }
       syncJumpButton();
+      syncWebRangeHud();
       controlLine.innerHTML = `Fly <strong>${MODES[controlMode].name}</strong>`;
       if (announce) {
         showBanner(MODES[controlMode].name);
@@ -305,6 +368,41 @@
 
     function syncJumpButton() {
       jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse() && (controlMode === "tap" || controlMode === "swing")));
+    }
+
+    function setWebRadius(value) {
+      webRadius = Math.max(WEB_RADIUS_MIN, Math.min(WEB_RADIUS_MAX, Math.round(Number(value) || WEB_RADIUS_DEFAULT)));
+      localStorage.setItem("flux-bird-web-radius", String(webRadius));
+      syncWebRangeControls();
+    }
+
+    function syncWebRangeControls() {
+      webRangeMenu.value = String(webRadius);
+      webRangePlay.value = String(webRadius);
+      webRangeMenuVal.textContent = String(webRadius);
+      webRangePlayVal.textContent = String(webRadius);
+    }
+
+    function syncWebRangeHud() {
+      webRangeHud.classList.toggle("hidden", !(mode === "play" && controlMode === "swing" && !usingMouse()));
+    }
+
+    function nearestWallPoint() {
+      let bestHit = null;
+      for (const pipe of pipes) {
+        for (const box of pipeBoxes(pipe)) {
+          const pt = closestOnBox(birdX, birdY, box);
+          const dist = Math.hypot(pt.x - birdX, pt.y - birdY);
+          if (dist < 24) continue;
+          if (!bestHit || dist < bestHit.d) bestHit = { pipe, x: pt.x, y: pt.y, d: dist };
+        }
+      }
+      return bestHit;
+    }
+
+    function wallInWebRange() {
+      const near = nearestWallPoint();
+      return near && near.d <= webRadius ? near : null;
     }
 
     function syncModeChoices() {
@@ -482,6 +580,7 @@
       burst(orb.x, orb.y, 16, spec.color); beep(spec.freq, 0.12, "sine", 0.06);
       updatePowerHud();
       syncJumpButton();
+      syncWebRangeHud();
     }
 
     function updatePowerHud() {
@@ -542,36 +641,25 @@
     function grabRope(cx, cy) {
       let bestHit = null;
       for (const pipe of pipes) {
-        if (pipe.x + PIPE_W < birdX - 90) continue;
         for (const box of pipeBoxes(pipe)) {
-          const magnet = { x: box.x - 36, y: box.y - 28, w: box.w + 72, h: box.h + 56 };
-          const fromClick = closestOnBox(cx, cy, magnet);
-          const fromBird = closestOnBox(birdX + (cx - birdX) * 0.45, birdY + (cy - birdY) * 0.45, magnet);
-          for (const raw of [fromClick, fromBird]) {
-            const pt = closestOnBox(raw.x, raw.y, box);
+          const towardClick = closestOnBox(cx, cy, box);
+          const towardBird = closestOnBox(birdX, birdY, box);
+          for (const pt of [towardClick, towardBird]) {
             const dBird = Math.hypot(pt.x - birdX, pt.y - birdY);
+            if (dBird < 24 || dBird > webRadius) continue;
             const dClick = Math.hypot(pt.x - cx, pt.y - cy);
-            if (dBird < 24 || dBird > MAX_ROPE) continue;
-            if (dClick > 240 && dBird > 360) continue;
-            const score = dClick * 0.55 + dBird * 0.45;
+            const score = dBird * 0.65 + dClick * 0.35;
             if (!bestHit || score < bestHit.score) bestHit = { score, pipe, x: pt.x, y: pt.y, t: dBird };
           }
         }
       }
       if (!bestHit) {
-        for (const pipe of pipes) {
-          if (pipe.x < birdX - 40 || pipe.x > birdX + MAX_ROPE) continue;
-          const box = pipeBoxes(pipe)[birdY < pipe.top + pipe.gap / 2 ? 0 : 1];
-          const pt = closestOnBox(cx, cy, box);
-          const dBird = Math.hypot(pt.x - birdX, pt.y - birdY);
-          if (dBird >= 24 && dBird <= MAX_ROPE && (!bestHit || dBird < bestHit.t)) {
-            bestHit = { score: dBird, pipe, x: pt.x, y: pt.y, t: dBird };
-          }
-        }
-      }
-      if (!bestHit) {
         const mag = Math.hypot(cx - birdX, cy - birdY) || 1;
-        missRope = { x: birdX + (cx - birdX) / mag * 90, y: birdY + (cy - birdY) / mag * 90, life: 0.16 };
+        missRope = {
+          x: birdX + (cx - birdX) / mag * Math.min(90, webRadius * 0.45),
+          y: birdY + (cy - birdY) / mag * Math.min(90, webRadius * 0.45),
+          life: 0.16,
+        };
         beep(170, 0.07, "square", 0.03);
         return false;
       }
@@ -640,6 +728,7 @@
         birdV = 0; birdVx = 0;
       }
       syncJumpButton();
+      syncWebRangeHud();
     }
 
     function leavePractice() {
@@ -653,6 +742,7 @@
       updateMeta();
       renderBoard(startBoard);
       syncJumpButton();
+      syncWebRangeHud();
     }
 
     function flap() {
@@ -708,6 +798,7 @@
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
       syncJumpButton();
+      syncWebRangeHud();
     }
 
     function update(dt) {
@@ -729,6 +820,7 @@
             if (wasMouse) {
               pointerHeld = false;
               syncJumpButton();
+              syncWebRangeHud();
             }
           } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
         }
@@ -911,6 +1003,30 @@
         ctx.beginPath(); ctx.roundRect(pipe.x, -24, PIPE_W, pipe.top + 24, 14); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.roundRect(pipe.x, pipe.top + pipe.gap, PIPE_W, height, 14); ctx.fill(); ctx.stroke();
       }
+      if (controlMode === "swing" && !usingMouse() && (mode === "play" || mode === "ready")) {
+        const readyWall = wallInWebRange();
+        ctx.beginPath();
+        ctx.arc(birdX, birdY, webRadius, 0, Math.PI * 2);
+        ctx.fillStyle = readyWall ? "rgba(255,176,122,0.14)" : "rgba(255,176,122,0.05)";
+        ctx.fill();
+        ctx.setLineDash([7, 7]);
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = readyWall ? "rgba(255,176,122,0.9)" : "rgba(255,176,122,0.35)";
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (readyWall) {
+          ctx.fillStyle = "#ffb07a";
+          ctx.beginPath();
+          ctx.arc(readyWall.x, readyWall.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,236,210,0.85)";
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(birdX, birdY);
+          ctx.lineTo(readyWall.x, readyWall.y);
+          ctx.stroke();
+        }
+      }
       const hook = ropeAnchor();
       if (hook) {
         ctx.strokeStyle = "rgba(236, 246, 255, 0.9)";
@@ -1029,6 +1145,14 @@
       if (!usingMouse()) flap();
     });
     jumpBtn.addEventListener("click", (event) => { event.stopPropagation(); flap(); });
+    function onWebRangeInput(event) {
+      event.stopPropagation();
+      setWebRadius(event.target.value);
+    }
+    webRangeMenu.addEventListener("input", onWebRangeInput);
+    webRangePlay.addEventListener("input", onWebRangeInput);
+    webRangeMenu.addEventListener("pointerdown", (event) => event.stopPropagation());
+    webRangePlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     leaveBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       leavePractice();
@@ -1055,7 +1179,7 @@
     document.getElementById("menuBtn").addEventListener("click", (event) => {
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");
       practice = false; leaveBtn.classList.add("hidden");
-      mode = "ready"; renderBoard(startBoard); syncJumpButton(); updateMeta();
+      mode = "ready"; renderBoard(startBoard); syncJumpButton(); syncWebRangeHud(); updateMeta();
     });
     document.getElementById("saveBtn").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1065,7 +1189,7 @@
       saveScore(name, pendingScore); pendingScore = 0; saveRow.classList.add("hidden");
     });
 
-    resize(); renderBoard(startBoard); updateMeta(); pickMode(selectedMode); requestAnimationFrame(loop);
+    resize(); renderBoard(startBoard); updateMeta(); pickMode(selectedMode); syncWebRangeControls(); requestAnimationFrame(loop);
   </script>
 </body>
 </html>

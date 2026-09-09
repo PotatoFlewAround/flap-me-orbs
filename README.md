@@ -11,7 +11,7 @@ Pick a control mode, then **Play** or **Practice**.
 **Modes**
 
 - **Jump** — tap / click / Space to flap
-- **Web** — keep your jump, and hold click on a pipe to sling
+- **Web** — keep your jump, and hold click to sling a wall inside your reach circle. Set **Web reach** on the menu or during play.
 
 **Orbs**
 
