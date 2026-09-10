@@ -80,6 +80,8 @@
     .panel h1 { font-size: 1.85rem; letter-spacing: -0.04em; }
     .panel p { margin: 8px 0 12px; color: var(--muted); line-height: 1.4; font-size: 0.92rem; }
     .orbs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin: 0 0 12px; color: var(--muted); font-size: 0.76rem; text-align: left; }
+    .boards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0 0 12px; }
+    .boards .board { margin: 0; }
     .board { margin: 0 0 12px; text-align: left; color: var(--muted); font-size: 0.82rem; }
     .board h2 { margin-bottom: 6px; color: var(--ink); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
     .board ol { padding-left: 0; list-style: none; }
@@ -172,6 +174,7 @@
       <div id="levelLine" class="hud-line">Level 1</div>
       <div id="mapLine" class="hud-line">Dusk Vale</div>
       <div id="bestLine" class="hud-line">Best 0</div>
+      <div id="starLine" class="hud-line">Stars 0</div>
       <div id="controlLine" class="hud-line">Fly <strong>Jump</strong></div>
       <div id="powerHud" class="power hidden"><span id="powerName">Ready</span><div class="bar"><span id="powerBar"></span></div></div>
     </div>
@@ -195,9 +198,12 @@
         <div><b style="color:#9dffb0">Green</b> tiny</div>
         <div><b style="color:#ffe08a">Gold</b> double</div>
         <div><b style="color:#ff7a4a">Orange</b> knockback</div>
-        <div><b style="color:#ffe9a8">Stars</b> +1 point</div>
+        <div><b style="color:#ffe9a8">Stars</b> star ranking</div>
       </div>
-      <div class="board"><h2>Leaderboard</h2><ol id="startBoard"></ol></div>
+      <div class="boards">
+        <div class="board"><h2>Highest level</h2><ol id="startLevelBoard"></ol></div>
+        <div class="board"><h2>Most stars</h2><ol id="startStarBoard"></ol></div>
+      </div>
       <button id="playBtn" type="button">Play</button>
       <button id="practiceBtn" class="ghost" type="button">Practice</button>
       <button id="studioBtn" class="ghost" type="button">Modify your hero</button>
@@ -262,7 +268,10 @@
         <input id="playerName" maxlength="14" placeholder="Your name" />
         <button id="saveBtn" type="button" style="width:auto">Save</button>
       </div>
-      <div class="board"><h2>Leaderboard</h2><ol id="overBoard"></ol></div>
+      <div class="boards">
+        <div class="board"><h2>Highest level</h2><ol id="overLevelBoard"></ol></div>
+        <div class="board"><h2>Most stars</h2><ol id="overStarBoard"></ol></div>
+      </div>
       <button id="retryBtn" type="button">Play again</button>
       <button id="menuBtn" class="ghost" type="button">Menu</button>
     </section>
@@ -288,6 +297,7 @@
     const levelLine = document.getElementById("levelLine");
     const mapLine = document.getElementById("mapLine");
     const bestLine = document.getElementById("bestLine");
+    const starLine = document.getElementById("starLine");
     const startPanel = document.getElementById("start");
     const overPanel = document.getElementById("over");
     const overText = document.getElementById("overText");
@@ -297,8 +307,10 @@
     const banner = document.getElementById("banner");
     const saveRow = document.getElementById("saveRow");
     const playerName = document.getElementById("playerName");
-    const startBoard = document.getElementById("startBoard");
-    const overBoard = document.getElementById("overBoard");
+    const startLevelBoard = document.getElementById("startLevelBoard");
+    const startStarBoard = document.getElementById("startStarBoard");
+    const overLevelBoard = document.getElementById("overLevelBoard");
+    const overStarBoard = document.getElementById("overStarBoard");
     const leaveBtn = document.getElementById("leaveBtn");
     const controlLine = document.getElementById("controlLine");
     const legend = document.getElementById("legend");
@@ -328,6 +340,7 @@
     const DASH_TRAIL = 0.07;
     const DASH_HOLD_START = 0.12;
     const DASH_TAP_WINDOW = 0.75;
+    const MOUSE_MAX_VX = 420;
     const POWERS = {
       shield: { name: "Shield", color: "#ff8ac8", duration: 8, freq: 880 },
       drift: { name: "Drift", color: "#7ee7ff", duration: 6, freq: 420 },
@@ -428,9 +441,9 @@
     let width = 0, height = 0, dpr = 1, last = 0, mode = "ready";
     let birdY = 0, birdV = 0, birdX = 0, angle = 0;
     let pipes = [], orbs = [], starBits = [], particles = [], stars = [];
-    let score = 0, speed = 205, shake = 0, invuln = 0, scroll = 0;
+    let score = 0, starCount = 0, speed = 205, shake = 0, invuln = 0, scroll = 0;
     let power = null, powerLeft = 0, powerMax = 1, shield = false, levelIndex = 0;
-    let pendingScore = 0, bannerT = 0, bannerText = "";
+    let pendingSave = false, bannerT = 0, bannerText = "";
     let mouseY = 0, mouseX = 0, pointerHeld = false;
     let birdVx = 0;
     let dashHoldTime = 0, dashTrailTime = 0, dashBoost = 0, dashKeyHeld = false;
@@ -438,6 +451,7 @@
     let practice = false, practiceSpawnIndex = 0;
     let practicePower = null;
     let best = Number(localStorage.getItem("flux-bird-best") || 0);
+    let bestStars = Number(localStorage.getItem("flux-bird-best-stars") || 0);
     playerName.value = localStorage.getItem("flux-bird-name") || "";
     let look = loadLook();
     let studioOpen = false;
@@ -478,7 +492,10 @@
         powerMax = spec.duration;
         powerLeft = spec.duration;
       }
-      if (wasMouse && next !== "mouse") pointerHeld = false;
+      if (wasMouse && next !== "mouse") {
+        pointerHeld = false;
+        birdVx = 0;
+      }
       if (next !== "dash") resetDashCombo();
       updatePowerHud();
       syncFlyHud();
@@ -540,7 +557,8 @@
       appId: "1:887455906735:web:7ce3c8309ed58d198d8d5a",
     };
     let scoreDb = null;
-    let remoteBoard = [];
+    let levelBoard = [];
+    let starBoard = [];
 
     function initScoreDb() {
       if (typeof firebase === "undefined") return;
@@ -552,9 +570,18 @@
       }
     }
 
-    function cacheLocalBoard(rows) {
-      try { localStorage.setItem("flux-bird-board", JSON.stringify(rows.slice(0, 10))); }
-      catch { /* ignore quota */ }
+    function cacheBoards() {
+      try {
+        localStorage.setItem("flux-bird-level-board", JSON.stringify(levelBoard.slice(0, 10)));
+        localStorage.setItem("flux-bird-star-board", JSON.stringify(starBoard.slice(0, 10)));
+      } catch { /* ignore quota */ }
+    }
+
+    function loadCachedBoards() {
+      try { levelBoard = JSON.parse(localStorage.getItem("flux-bird-level-board") || "[]"); }
+      catch { levelBoard = []; }
+      try { starBoard = JSON.parse(localStorage.getItem("flux-bird-star-board") || "[]"); }
+      catch { starBoard = []; }
     }
 
     function escapeHtml(text) {
@@ -563,67 +590,106 @@
       }[ch]));
     }
 
-    async function fetchBoard() {
-      if (scoreDb) {
-        try {
-          const snap = await scoreDb.collection("scores").orderBy("score", "desc").limit(10).get();
-          remoteBoard = snap.docs.map((doc) => doc.data());
-          cacheLocalBoard(remoteBoard);
-          return remoteBoard;
-        } catch { /* use cache */ }
-      }
-      try { remoteBoard = JSON.parse(localStorage.getItem("flux-bird-board") || "[]"); }
-      catch { remoteBoard = []; }
-      return remoteBoard;
+    function rowLevelIndex(row) {
+      if (Number.isFinite(Number(row.levelIndex))) return Number(row.levelIndex);
+      return levelForScore(Number(row.score) || 0);
     }
 
-    function paintBoard(target, rows) {
+    function sortLevelRows(rows) {
+      return [...rows].sort((a, b) => {
+        const byLevel = rowLevelIndex(b) - rowLevelIndex(a);
+        if (byLevel) return byLevel;
+        return (Number(b.score) || 0) - (Number(a.score) || 0);
+      }).slice(0, 10);
+    }
+
+    function sortStarRows(rows) {
+      return [...rows].sort((a, b) => (Number(b.stars) || 0) - (Number(a.stars) || 0)).slice(0, 10);
+    }
+
+    async function fetchBoards() {
+      if (scoreDb) {
+        try {
+          const levelSnap = await scoreDb.collection("scores").orderBy("score", "desc").limit(10).get();
+          levelBoard = sortLevelRows(levelSnap.docs.map((doc) => doc.data()));
+          try {
+            const starSnap = await scoreDb.collection("scores").orderBy("stars", "desc").limit(10).get();
+            starBoard = sortStarRows(starSnap.docs.map((doc) => doc.data()));
+          } catch {
+            starBoard = sortStarRows(levelBoard);
+          }
+          cacheBoards();
+          return;
+        } catch { /* use cache */ }
+      }
+      loadCachedBoards();
+    }
+
+    function paintBoard(target, rows, kind) {
       if (!target) return;
       if (!rows.length) {
         target.innerHTML = "<li>No scores yet</li>";
         return;
       }
-      target.innerHTML = rows.map((row, index) => (
-        `<li class="board-row"><canvas class="board-orb" width="36" height="36" data-i="${index}"></canvas><span>${escapeHtml(row.name)} · ${row.score} · ${escapeHtml(row.level || "")}</span></li>`
-      )).join("");
+      target.innerHTML = rows.map((row, index) => {
+        const detail = kind === "stars"
+          ? `${Number(row.stars) || 0} stars`
+          : `Lv ${rowLevelIndex(row) + 1} · ${escapeHtml(row.level || "")}`;
+        return `<li class="board-row"><canvas class="board-orb" width="36" height="36" data-i="${index}"></canvas><span>${escapeHtml(row.name)} · ${detail}</span></li>`;
+      }).join("");
       target.querySelectorAll(".board-orb").forEach((canvasNode, index) => {
         paintBoardOrb(canvasNode, rows[index].look);
       });
     }
 
-    function applyBoard(rows) {
-      remoteBoard = rows;
-      cacheLocalBoard(rows);
-      paintBoard(startBoard, rows);
-      paintBoard(overBoard, rows);
-    }
-
-    function renderBoard(target) {
-      paintBoard(target, remoteBoard);
+    function paintAllBoards() {
+      paintBoard(startLevelBoard, levelBoard, "level");
+      paintBoard(startStarBoard, starBoard, "stars");
+      paintBoard(overLevelBoard, levelBoard, "level");
+      paintBoard(overStarBoard, starBoard, "stars");
     }
 
     function subscribeBoard() {
-      startBoard.innerHTML = "<li>Loading…</li>";
-      overBoard.innerHTML = "<li>Loading…</li>";
+      [startLevelBoard, startStarBoard, overLevelBoard, overStarBoard].forEach((node) => {
+        if (node) node.innerHTML = "<li>Loading…</li>";
+      });
       if (!scoreDb) {
-        fetchBoard().then(applyBoard);
+        fetchBoards().then(paintAllBoards);
         return;
       }
       scoreDb.collection("scores").orderBy("score", "desc").limit(10).onSnapshot(
-        (snap) => applyBoard(snap.docs.map((doc) => doc.data())),
-        () => fetchBoard().then(applyBoard)
+        (snap) => {
+          levelBoard = sortLevelRows(snap.docs.map((doc) => doc.data()));
+          cacheBoards();
+          paintAllBoards();
+        },
+        () => fetchBoards().then(paintAllBoards)
+      );
+      scoreDb.collection("scores").orderBy("stars", "desc").limit(10).onSnapshot(
+        (snap) => {
+          starBoard = sortStarRows(snap.docs.map((doc) => doc.data()));
+          cacheBoards();
+          paintAllBoards();
+        },
+        () => fetchBoards().then(paintAllBoards)
       );
     }
 
-    function qualify(value) {
-      return value > 0 && (remoteBoard.length < 10 || value > Number(remoteBoard[remoteBoard.length - 1].score || 0));
+    function qualifyLevel(pipeScore) {
+      return pipeScore > 0 && (levelBoard.length < 10 || pipeScore > Number(levelBoard[levelBoard.length - 1].score || 0));
     }
 
-    async function saveScore(name, value) {
+    function qualifyStars(count) {
+      return count > 0 && (starBoard.length < 10 || count > Number(starBoard[starBoard.length - 1].stars || 0));
+    }
+
+    async function saveRun(name) {
       const row = {
         name: name.slice(0, 14) || "Pilot",
-        score: Math.floor(value),
-        level: LEVELS[levelForScore(value)].name,
+        score: Math.floor(score),
+        stars: Math.floor(starCount),
+        levelIndex,
+        level: LEVELS[levelIndex].name,
         look: snapshotLook(),
         at: Date.now(),
       };
@@ -632,8 +698,10 @@
         catch { /* listener will keep the last good board */ }
         return;
       }
-      remoteBoard = [...remoteBoard, row].sort((a, b) => b.score - a.score).slice(0, 10);
-      applyBoard(remoteBoard);
+      levelBoard = sortLevelRows([...levelBoard, row]);
+      starBoard = sortStarRows([...starBoard, row]);
+      cacheBoards();
+      paintAllBoards();
     }
 
     function beep(freq, duration, type, gain) {
@@ -731,9 +799,10 @@
 
     function eatStar(bit) {
       const gain = power === "gold" ? STAR_VALUE * 2 : STAR_VALUE;
-      addScore(gain);
+      starCount += gain;
+      starLine.innerHTML = `Stars <strong>${starCount}</strong>`;
       burst(bit.x, bit.y, 7, "#ffe9a8");
-      beep(820 + score * 8, 0.05, "triangle", 0.03);
+      beep(820 + starCount * 8, 0.05, "triangle", 0.03);
     }
 
     function showBanner(text) {
@@ -752,6 +821,7 @@
     }
 
     function updateMeta() {
+      starLine.innerHTML = `Stars <strong>${starCount}</strong>`;
       if (practice) {
         levelLine.innerHTML = "Practice";
         mapLine.textContent = practicePower ? POWERS[practicePower].name : "No power";
@@ -760,17 +830,17 @@
       }
       levelLine.innerHTML = `Level <strong>${levelIndex + 1}</strong>`;
       mapLine.textContent = level().name;
-      bestLine.innerHTML = `Best <strong>${best}</strong>`;
+      bestLine.innerHTML = `Best <strong>${best}</strong> · <strong>${bestStars}</strong>★`;
     }
 
     function resetRun() {
       birdY = height * 0.42; birdV = 0; birdVx = 0; angle = 0;
       birdX = Math.round(width * 0.28);
       pipes = []; orbs = []; starBits = []; particles = [];
-      score = 0; shake = 0; invuln = 0; scroll = 0;
+      score = 0; starCount = 0; shake = 0; invuln = 0; scroll = 0;
       power = null; powerLeft = 0; shield = false;
       setLevel(0, false); speed = level().speed;
-      scoreEl.textContent = "0"; pendingScore = 0;
+      scoreEl.textContent = "0"; pendingSave = false;
       resetDashCombo();
       dashKeyHeld = false;
       practiceSpawnIndex = 0;
@@ -1011,7 +1081,7 @@
       power = null; powerLeft = 0; shield = false;
       updatePowerHud();
       updateMeta();
-      renderBoard(startBoard);
+      paintAllBoards();
       syncFlyHud();
       syncPracticePowerUi();
     }
@@ -1063,11 +1133,12 @@
       mode = "over"; shake = 10;
       burst(birdX, birdY, 28, "#ff8aa8"); beep(140, 0.22, "sawtooth", 0.06);
       if (score > best) { best = score; localStorage.setItem("flux-bird-best", String(best)); }
+      if (starCount > bestStars) { bestStars = starCount; localStorage.setItem("flux-bird-best-stars", String(bestStars)); }
       updateMeta();
-      overText.textContent = `Score ${score} · ${level().name}`;
-      pendingScore = qualify(score) ? score : 0;
-      saveRow.classList.toggle("hidden", !pendingScore);
-      paintBoard(overBoard, remoteBoard);
+      overText.textContent = `Level ${levelIndex + 1} ${level().name} · ${starCount} stars`;
+      pendingSave = qualifyLevel(score) || qualifyStars(starCount);
+      saveRow.classList.toggle("hidden", !pendingSave);
+      paintAllBoards();
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
       syncFlyHud();
@@ -1095,6 +1166,7 @@
               powerLeft = 0; updatePowerHud();
               if (wasMouse) {
                 pointerHeld = false;
+                birdVx = 0;
                 syncFlyHud();
               }
             } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
@@ -1127,12 +1199,12 @@
             const prevX = birdX, prevY = birdY;
             birdY += (targetY - birdY) * Math.min(1, follow * dt);
             birdX += (targetX - birdX) * Math.min(1, follow * dt);
-            birdV = (birdY - prevY) / Math.max(dt, 0.0001);
-            birdVx = (birdX - prevX) / Math.max(dt, 0.0001);
+            const invDt = 1 / Math.max(dt, 0.0001);
+            birdV = (birdY - prevY) * invDt;
+            birdVx = Math.max(-MOUSE_MAX_VX, Math.min(MOUSE_MAX_VX, (birdX - prevX) * invDt));
           } else {
             if (!isDashing()) birdV = Math.min(MAX_FALL, birdV + gravity * dt);
-            birdVx *= dashBoost > 0 ? 0.995 : 0.92;
-            birdX += birdVx * dt;
+            birdVx = 0;
             birdY += birdV * dt;
             birdX = Math.max(width * 0.12, Math.min(width * 0.55, birdX));
           }
@@ -1140,7 +1212,9 @@
         } else {
           const restX = Math.round(width * 0.28);
           if (dashBoost <= 0) {
-            birdX += (restX - birdX) * Math.min(1, 7 * dt);
+            const nextX = birdX + (restX - birdX) * Math.min(1, 7 * dt);
+            if (hitsAnyPipe(nextX, birdY, hitRadius())) birdVx = 0;
+            else birdX = nextX;
             birdVx *= 0.84;
           }
           birdX += birdVx * dt;
@@ -1670,6 +1744,10 @@
         || circleHitsRect(bx, by, radius, mid - wall.footW / 2, botY + botH - 22, wall.footW, 28);
     }
 
+    function hitsAnyPipe(x, y, radius) {
+      return pipes.some((pipe) => hitsPipe(pipe, x, y, radius));
+    }
+
     function hitsPipe(pipe, bx, by, radius) {
       const mid = pipeCenter(pipe);
       const botY = pipe.top + pipe.gap;
@@ -2035,7 +2113,7 @@
       persistLook();
       studioPanel.classList.add("hidden");
       startPanel.classList.remove("hidden");
-      renderBoard(startBoard);
+      paintAllBoards();
     }
 
     function updateStudio(dt) {
@@ -2155,7 +2233,7 @@
     document.getElementById("menuBtn").addEventListener("click", (event) => {
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");
       practice = false; leaveBtn.classList.add("hidden");
-      mode = "ready"; renderBoard(startBoard); syncFlyHud(); updateMeta();
+      mode = "ready"; paintAllBoards(); syncFlyHud(); updateMeta();
       syncPracticePowerUi();
     });
     document.getElementById("studioBtn").addEventListener("click", (event) => {
@@ -2233,10 +2311,10 @@
     });
     document.getElementById("saveBtn").addEventListener("click", (event) => {
       event.stopPropagation();
-      if (!pendingScore) return;
+      if (!pendingSave) return;
       const name = playerName.value.trim() || "Pilot";
       localStorage.setItem("flux-bird-name", name);
-      saveScore(name, pendingScore); pendingScore = 0; saveRow.classList.add("hidden");
+      saveRun(name); pendingSave = false; saveRow.classList.add("hidden");
     });
 
     initScoreDb();
