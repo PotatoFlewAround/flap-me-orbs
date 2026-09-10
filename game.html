@@ -182,7 +182,7 @@
       <div class="legend-row"><span class="legend-dot" style="background:#7ee7ff;color:#7ee7ff"></span>Cyan drift</div>
       <div class="legend-row"><span class="legend-dot" style="background:#9dffb0;color:#9dffb0"></span>Green tiny</div>
       <div class="legend-row"><span class="legend-dot" style="background:#ffe08a;color:#ffe08a"></span>Gold double</div>
-      <div class="legend-row"><span class="legend-dot" style="background:#ff7a4a;color:#ff7a4a"></span>Orange dash</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#ff7a4a;color:#ff7a4a"></span>Orange knockback</div>
     </div>
     <div id="banner" class="banner"></div>
     <section id="start" class="panel">
@@ -194,7 +194,7 @@
         <div><b style="color:#7ee7ff">Cyan</b> drift</div>
         <div><b style="color:#9dffb0">Green</b> tiny</div>
         <div><b style="color:#ffe08a">Gold</b> double</div>
-        <div><b style="color:#ff7a4a">Orange</b> dash</div>
+        <div><b style="color:#ff7a4a">Orange</b> knockback</div>
         <div><b style="color:#ffe9a8">Stars</b> +1 point</div>
       </div>
       <div class="board"><h2>Leaderboard</h2><ol id="startBoard"></ol></div>
@@ -276,7 +276,7 @@
       <button type="button" data-power="drift" style="color:#7ee7ff">Drift</button>
       <button type="button" data-power="tiny" style="color:#9dffb0">Tiny</button>
       <button type="button" data-power="gold" style="color:#ffe08a">Double</button>
-      <button type="button" data-power="dash" style="color:#ff7a4a">Dash</button>
+      <button type="button" data-power="dash" style="color:#ff7a4a">Knockback</button>
     </div>
   </div>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
@@ -333,7 +333,7 @@
       drift: { name: "Drift", color: "#7ee7ff", duration: 6, freq: 420 },
       tiny: { name: "Tiny", color: "#9dffb0", duration: 6, freq: 640 },
       gold: { name: "Double", color: "#ffe08a", duration: 6, freq: 980 },
-      dash: { name: "Dash", color: "#ff7a4a", duration: 8, freq: 300 },
+      dash: { name: "Knockback", color: "#ff7a4a", duration: 8, freq: 300 },
       mouse: { name: "Mouse", color: "#f4f7ff", duration: 7, freq: 520 },
     };
     const ORB_TYPES = Object.keys(POWERS);
@@ -342,7 +342,7 @@
       drift: "Drift — slower fall",
       tiny: "Tiny — smaller hitbox",
       gold: "Double — extra score",
-      dash: "Dash — tap, then hold",
+      dash: "Knockback — tap, then hold",
       mouse: "Mouse — hold and drag",
     };
     const PRACTICE_COURSE = [
@@ -360,9 +360,9 @@
       { orb: "gold", title: "Double", hint: "Gold — double score", gap: 232 },
       { orb: null, title: "Double", hint: null, gap: 210 },
       { orb: null, title: "Double", hint: null, gap: 210 },
-      { orb: "dash", title: "Dash", hint: "Dash — hold left click", gap: 232 },
-      { orb: null, title: "Dash", hint: "Burst at the cursor", gap: 196 },
-      { orb: null, title: "Dash", hint: null, gap: 196 },
+      { orb: "dash", title: "Knockback", hint: "Knockback — tap, then hold", gap: 232 },
+      { orb: null, title: "Knockback", hint: "Hold to surge forward", gap: 196 },
+      { orb: null, title: "Knockback", hint: null, gap: 196 },
       { orb: "mouse", title: "Mouse", hint: "Mouse — hold and drag", gap: 240 },
       { orb: null, title: "Mouse", hint: "Release to fall", gap: 214 },
       { orb: null, title: "Mouse", hint: null, gap: 214 },
@@ -432,7 +432,7 @@
     let power = null, powerLeft = 0, powerMax = 1, shield = false, levelIndex = 0;
     let pendingScore = 0, bannerT = 0, bannerText = "";
     let mouseY = 0, mouseX = 0, pointerHeld = false;
-    let birdVx = 0, birdHomeX = 0;
+    let birdVx = 0;
     let dashHoldTime = 0, dashTrailTime = 0, dashBoost = 0, dashKeyHeld = false;
     let dashTapAt = 0, dashReady = false;
     let practice = false, practiceSpawnIndex = 0;
@@ -661,7 +661,6 @@
       canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       birdX = Math.round(width * 0.28);
-      birdHomeX = birdX;
       if (!mouseY) mouseY = height * 0.42;
       if (mode === "ready") birdY = height * 0.42;
       seedSky();
@@ -767,7 +766,6 @@
     function resetRun() {
       birdY = height * 0.42; birdV = 0; birdVx = 0; angle = 0;
       birdX = Math.round(width * 0.28);
-      birdHomeX = birdX;
       pipes = []; orbs = []; starBits = []; particles = [];
       score = 0; shake = 0; invuln = 0; scroll = 0;
       power = null; powerLeft = 0; shield = false;
@@ -952,10 +950,7 @@
       dashBoost = 0;
       dashHoldTime = 0;
       dashTrailTime = 0;
-      if (power === "dash") {
-        birdVx = 0;
-        birdHomeX = birdX;
-      }
+      if (power === "dash") birdVx = 0;
     }
 
     function resetDashCombo() {
@@ -1042,7 +1037,6 @@
         if (hitsPipe(pipe, birdX, birdY, radius + 10)) {
           birdY = pipe.top + pipe.gap / 2;
           birdX = Math.max(18, pipeLeft(pipe) - radius - 8);
-          birdHomeX = birdX;
         }
       }
       burst(birdX, birdY, 14, "#d7e7ff");
@@ -1144,8 +1138,9 @@
           }
           angle = isDashing() ? angle * 0.7 : Math.max(-0.55, Math.min(0.55, birdV / 720));
         } else {
+          const restX = Math.round(width * 0.28);
           if (dashBoost <= 0) {
-            birdX += (birdHomeX - birdX) * Math.min(1, 7 * dt);
+            birdX += (restX - birdX) * Math.min(1, 7 * dt);
             birdVx *= 0.84;
           }
           birdX += birdVx * dt;

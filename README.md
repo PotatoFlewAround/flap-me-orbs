@@ -28,7 +28,7 @@ Power-up orbs are rare and random. The legend sits in the bottom-left corner.
 | Cyan | Drift. Slower fall |
 | Green | Tiny. Smaller hitbox |
 | Gold | Double score |
-| Orange | Dash. Hold left click to burst toward the cursor |
+| Orange | Knockback. Tap, then hold to surge forward |
 
 ## Play online
 
