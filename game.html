@@ -432,7 +432,7 @@
     let power = null, powerLeft = 0, powerMax = 1, shield = false, levelIndex = 0;
     let pendingScore = 0, bannerT = 0, bannerText = "";
     let mouseY = 0, mouseX = 0, pointerHeld = false;
-    let birdVx = 0;
+    let birdVx = 0, birdHomeX = 0;
     let dashHoldTime = 0, dashTrailTime = 0, dashBoost = 0, dashKeyHeld = false;
     let dashTapAt = 0, dashReady = false;
     let practice = false, practiceSpawnIndex = 0;
@@ -661,6 +661,7 @@
       canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       birdX = Math.round(width * 0.28);
+      birdHomeX = birdX;
       if (!mouseY) mouseY = height * 0.42;
       if (mode === "ready") birdY = height * 0.42;
       seedSky();
@@ -766,6 +767,7 @@
     function resetRun() {
       birdY = height * 0.42; birdV = 0; birdVx = 0; angle = 0;
       birdX = Math.round(width * 0.28);
+      birdHomeX = birdX;
       pipes = []; orbs = []; starBits = []; particles = [];
       score = 0; shake = 0; invuln = 0; scroll = 0;
       power = null; powerLeft = 0; shield = false;
@@ -950,7 +952,10 @@
       dashBoost = 0;
       dashHoldTime = 0;
       dashTrailTime = 0;
-      if (power === "dash") birdVx = 0;
+      if (power === "dash") {
+        birdVx = 0;
+        birdHomeX = birdX;
+      }
     }
 
     function resetDashCombo() {
@@ -1037,6 +1042,7 @@
         if (hitsPipe(pipe, birdX, birdY, radius + 10)) {
           birdY = pipe.top + pipe.gap / 2;
           birdX = Math.max(18, pipeLeft(pipe) - radius - 8);
+          birdHomeX = birdX;
         }
       }
       burst(birdX, birdY, 14, "#d7e7ff");
@@ -1138,9 +1144,8 @@
           }
           angle = isDashing() ? angle * 0.7 : Math.max(-0.55, Math.min(0.55, birdV / 720));
         } else {
-          const restX = Math.round(width * 0.28);
           if (dashBoost <= 0) {
-            birdX += (restX - birdX) * Math.min(1, 7 * dt);
+            birdX += (birdHomeX - birdX) * Math.min(1, 7 * dt);
             birdVx *= 0.84;
           }
           birdX += birdVx * dt;
