@@ -1069,6 +1069,7 @@
         if (dashHeld()) {
           dashBoost = 1;
           birdVx = DASH_SPEED;
+          birdV = 0;
           dashHoldTime += dt;
           if (dashHoldTime >= DASH_TRAIL) {
             dashHoldTime = 0;
@@ -1078,7 +1079,7 @@
           stopDash();
         }
         const L = level();
-        const gravity = power === "drift" ? L.gravity * 0.48 : L.gravity;
+        const gravity = dashHeld() ? 0 : (power === "drift" ? L.gravity * 0.48 : L.gravity);
         if (usingMouse()) {
           const radius = hitRadius();
           if (pointerHeld && dashBoost <= 0) {
@@ -1091,13 +1092,13 @@
             birdV = (birdY - prevY) / Math.max(dt, 0.0001);
             birdVx = (birdX - prevX) / Math.max(dt, 0.0001);
           } else {
-            birdV = Math.min(MAX_FALL, birdV + gravity * dt);
+            if (!dashHeld()) birdV = Math.min(MAX_FALL, birdV + gravity * dt);
             birdVx *= dashBoost > 0 ? 0.995 : 0.92;
             birdX += birdVx * dt;
             birdY += birdV * dt;
             birdX = Math.max(width * 0.12, Math.min(width * 0.55, birdX));
           }
-          angle = Math.max(-0.55, Math.min(0.55, birdV / 720));
+          angle = dashHeld() ? angle * 0.7 : Math.max(-0.55, Math.min(0.55, birdV / 720));
         } else {
           const restX = Math.round(width * 0.28);
           if (dashBoost <= 0) {
@@ -1106,9 +1107,9 @@
           }
           birdX += birdVx * dt;
           birdX = Math.max(18, Math.min(width * 0.62, birdX));
-          birdV = Math.min(MAX_FALL, birdV + gravity * dt);
+          if (!dashHeld()) birdV = Math.min(MAX_FALL, birdV + gravity * dt);
           birdY += birdV * dt;
-          angle = Math.max(-0.6, Math.min(1.1, birdV / 900));
+          angle = dashHeld() ? angle * 0.7 : Math.max(-0.6, Math.min(1.1, birdV / 900));
         }
         speed = practice
           ? 168
