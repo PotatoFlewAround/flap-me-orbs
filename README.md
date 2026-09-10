@@ -1,6 +1,6 @@
 # Flap me Orbs
 
-Vibecoded the hell out of this in a day. This is a tribute to Dong Nguyen's Flappy Bird. Thanks, Dong!
+Vibecoded. This is a tribute to Dong Nguyen's Flappy Bird. Thanks, Dong!
 
 Steer your hero through pipes and star trails. Jump to fly. Rare power-up orbs change how you move. The code is yours to use, fork, and remix. GG!
 
