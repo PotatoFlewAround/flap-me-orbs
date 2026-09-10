@@ -287,6 +287,14 @@
     const POWER_ORB_CHANCE = 0.13;
     const STAR_TRAIL_CHANCE = 0.8;
     const STAR_VALUE = 1;
+    const BANNER_PLANE_LINES = ["Hello Carol!", "from Dao Ming Si"];
+    const BANNER_PLANE_CYCLE_MS = 48000;
+    const BANNER_PLANE_FLIGHT_MS = 20000;
+    const BANNER_PLANE_ALTITUDE = 0.16;
+    const BANNER_PLANE_FLAG_W = 178;
+    const BANNER_PLANE_FLAG_H = 48;
+    const BANNER_PLANE_CABLE = 26;
+    const BANNER_PLANE_BODY = 54;
     const DASH_HOLD = 0.18;
     const DASH_SPEED = 980;
     const DASH_TIME = 0.16;
@@ -1146,9 +1154,172 @@
       }
       ctx.globalAlpha = 1;
 
+      drawBannerPlane();
+
       drawRidges(0.18, L.ridge[0], 58, 0.2);
       drawRidges(0.34, L.ridge[1], 96, 1.1);
       drawRidges(0.58, L.ridge[2], 138, 2.4);
+    }
+
+    function bannerFlagWave(now, freeEnd) {
+      const travel = Math.max(0, Math.min(1, freeEnd));
+      return Math.sin(now * 0.005 + travel * 4.4) * 6.5 * (0.2 + travel * 0.8)
+        + Math.sin(now * 0.011 + travel * 7.6) * 2.4 * travel;
+    }
+
+    function drawBannerPlane() {
+      const now = performance.now();
+      const phase = now % BANNER_PLANE_CYCLE_MS;
+      if (phase > BANNER_PLANE_FLIGHT_MS) return;
+
+      const scale = Math.max(0.72, Math.min(1, width / 560));
+      const flagW = BANNER_PLANE_FLAG_W * scale;
+      const flagH = BANNER_PLANE_FLAG_H * scale;
+      const cable = BANNER_PLANE_CABLE * scale;
+      const body = BANNER_PLANE_BODY * scale;
+      const convoy = body + cable + flagW + 16;
+      const startX = -convoy;
+      const endX = width + body;
+      const planeX = startX + (endX - startX) * (phase / BANNER_PLANE_FLIGHT_MS);
+      const planeY = height * BANNER_PLANE_ALTITUDE + Math.sin(now * 0.00115) * 9;
+      const tilt = Math.sin(now * 0.00115) * 0.04;
+      const tailX = -24 * scale;
+      const tailY = 2 * scale;
+      const attachX = planeX + tailX * Math.cos(tilt) - tailY * Math.sin(tilt);
+      const attachY = planeY + tailX * Math.sin(tilt) + tailY * Math.cos(tilt);
+      const flagRight = attachX - cable;
+      const flagLeft = flagRight - flagW;
+      const flagTop = attachY - flagH * 0.48;
+      const strips = 22;
+
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+
+      ctx.strokeStyle = "rgba(236, 228, 210, 0.7)";
+      ctx.lineWidth = 1.2 * scale;
+      ctx.beginPath();
+      ctx.moveTo(attachX, attachY);
+      const midX = (attachX + flagRight) / 2;
+      ctx.quadraticCurveTo(
+        midX,
+        attachY + Math.sin(now * 0.006) * 4 * scale,
+        flagRight,
+        flagTop + flagH * 0.5 + bannerFlagWave(now, 0)
+      );
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i <= strips; i += 1) {
+        const t = i / strips;
+        const x = flagRight - t * flagW;
+        const y = flagTop + bannerFlagWave(now, t);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      for (let i = strips; i >= 0; i -= 1) {
+        const t = i / strips;
+        const x = flagRight - t * flagW;
+        ctx.lineTo(x, flagTop + flagH + bannerFlagWave(now, t));
+      }
+      ctx.closePath();
+      const cloth = ctx.createLinearGradient(flagLeft, flagTop, flagRight, flagTop + flagH);
+      cloth.addColorStop(0, "#f7ecd4");
+      cloth.addColorStop(0.55, "#efe0c0");
+      cloth.addColorStop(1, "#f4e6cc");
+      ctx.fillStyle = cloth;
+      ctx.fill();
+      ctx.strokeStyle = "rgba(90, 52, 40, 0.28)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      for (let i = 0; i < strips; i += 1) {
+        const t0 = i / strips;
+        const t1 = (i + 1) / strips;
+        const shade = Math.sin(now * 0.005 + t0 * 4.4) * 0.08;
+        ctx.fillStyle = `rgba(90, 48, 32, ${0.05 + Math.max(0, shade)})`;
+        ctx.beginPath();
+        ctx.moveTo(flagRight - t0 * flagW, flagTop + bannerFlagWave(now, t0));
+        ctx.lineTo(flagRight - t1 * flagW, flagTop + bannerFlagWave(now, t1));
+        ctx.lineTo(flagRight - t1 * flagW, flagTop + flagH + bannerFlagWave(now, t1));
+        ctx.lineTo(flagRight - t0 * flagW, flagTop + flagH + bannerFlagWave(now, t0));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#5a2c38";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `700 ${Math.round(12 * scale)}px "Segoe UI", system-ui, sans-serif`;
+      BANNER_PLANE_LINES.forEach((line, lineIndex) => {
+        const glyphs = [...line];
+        const widths = glyphs.map((ch) => ctx.measureText(ch).width);
+        const tracking = 0.4 * scale;
+        const total = widths.reduce((sum, w) => sum + w, 0) + tracking * Math.max(0, glyphs.length - 1);
+        const lineY = flagTop + flagH * (0.34 + lineIndex * 0.34);
+        let cursor = flagLeft + (flagW - total) / 2;
+        glyphs.forEach((ch, index) => {
+          const glyphW = widths[index];
+          const cx = cursor + glyphW / 2;
+          const freeEnd = (flagRight - cx) / flagW;
+          ctx.fillText(ch, cx, lineY + bannerFlagWave(now, freeEnd) * 0.92);
+          cursor += glyphW + tracking;
+        });
+      });
+
+      ctx.translate(planeX, planeY);
+      ctx.rotate(tilt);
+      ctx.fillStyle = "rgba(8, 10, 18, 0.22)";
+      ctx.beginPath();
+      ctx.ellipse(2 * scale, 10 * scale, 18 * scale, 4 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#d7dee8";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 22 * scale, 6.4 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#c43b3b";
+      ctx.fillRect(-10 * scale, -2.2 * scale, 18 * scale, 3.2 * scale);
+
+      ctx.fillStyle = "#9aa7b8";
+      ctx.beginPath();
+      ctx.ellipse(-2 * scale, 1.5 * scale, 16 * scale, 3.2 * scale, 0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#8fd7ff";
+      ctx.beginPath();
+      ctx.ellipse(8 * scale, -2.4 * scale, 6.5 * scale, 3.4 * scale, -0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#cfd6e0";
+      ctx.beginPath();
+      ctx.moveTo(-20 * scale, -1 * scale);
+      ctx.lineTo(-28 * scale, -10 * scale);
+      ctx.lineTo(-16 * scale, -1 * scale);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-20 * scale, 1 * scale);
+      ctx.lineTo(-27 * scale, 7 * scale);
+      ctx.lineTo(-15 * scale, 2 * scale);
+      ctx.closePath();
+      ctx.fill();
+
+      const noseX = 22 * scale;
+      ctx.fillStyle = "#6a7380";
+      ctx.beginPath();
+      ctx.arc(noseX, 0, 2.2 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      const propA = now * 0.042;
+      ctx.strokeStyle = "rgba(236, 242, 255, 0.82)";
+      ctx.lineWidth = 1.4 * scale;
+      ctx.beginPath();
+      ctx.moveTo(noseX + Math.cos(propA) * 11 * scale, Math.sin(propA) * 3.6 * scale);
+      ctx.lineTo(noseX - Math.cos(propA) * 11 * scale, -Math.sin(propA) * 3.6 * scale);
+      ctx.moveTo(noseX + Math.cos(propA + Math.PI / 2) * 8 * scale, Math.sin(propA + Math.PI / 2) * 2.6 * scale);
+      ctx.lineTo(noseX - Math.cos(propA + Math.PI / 2) * 8 * scale, -Math.sin(propA + Math.PI / 2) * 2.6 * scale);
+      ctx.stroke();
+
+      ctx.restore();
     }
 
     function pickWallKind(kinds) {
