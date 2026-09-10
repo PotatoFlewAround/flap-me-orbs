@@ -277,6 +277,11 @@
     const studioCtx = studioView.getContext("2d");
 
     const BIRD_R = 16, PIPE_W = 70, GROUND = 88, ORB_R = 11, STAR_R = 6, FLAP = -620, MAX_FALL = 920;
+    const TOP_WALL_KINDS = ["brick", "ladder", "cloud"];
+    const BOT_WALL_KINDS = ["building", "brick", "tree"];
+    const BRICK_ROW_H = 11;
+    const BRICK_COL_W = 20;
+    const LADDER_RUNG_GAP = 16;
     const POWER_ORB_CHANCE = 0.13;
     const STAR_TRAIL_CHANCE = 0.8;
     const STAR_VALUE = 1;
@@ -530,6 +535,9 @@
         hint: lesson ? lesson.hint : null,
         title: lesson ? lesson.title : null,
         applied: false,
+        topKind: pickWallKind(TOP_WALL_KINDS),
+        botKind: pickWallKind(BOT_WALL_KINDS),
+        seed: Math.random(),
       });
       if (lesson) {
         if (lesson.orb) {
@@ -1069,6 +1077,181 @@
       drawRidges(0.58, L.ridge[2], 138, 2.4);
     }
 
+    function pickWallKind(kinds) {
+      return kinds[Math.floor(Math.random() * kinds.length)];
+    }
+
+    function wallRand(seed, index) {
+      const value = Math.sin(seed * 127.1 + index * 311.7) * 43758.5453;
+      return value - Math.floor(value);
+    }
+
+    function clipWall(x, y, w, h, paint) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      paint();
+      ctx.restore();
+    }
+
+    function washWall(x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.28;
+      ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1;
+    }
+
+    function drawBrickPattern(x, y, w, h, seed) {
+      ctx.fillStyle = "#2a1614";
+      ctx.fillRect(x, y, w, h);
+      let row = 0;
+      for (let gy = y; gy < y + h + BRICK_ROW_H; gy += BRICK_ROW_H, row += 1) {
+        const offset = row % 2 === 0 ? 0 : -BRICK_COL_W * 0.5;
+        for (let gx = x + offset; gx < x + w + BRICK_COL_W; gx += BRICK_COL_W) {
+          const tint = wallRand(seed, row * 31 + gx);
+          ctx.fillStyle = tint > 0.7 ? "#a24a3c" : tint > 0.35 ? "#8a3d32" : "#73342b";
+          ctx.fillRect(gx + 1, gy + 1, BRICK_COL_W - 2, BRICK_ROW_H - 2);
+        }
+      }
+    }
+
+    function drawBrickWall(x, y, w, h, seed, levelColor) {
+      clipWall(x, y, w, h, () => {
+        drawBrickPattern(x, y, w, h, seed);
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.fillRect(x, y, 5, h);
+        ctx.fillStyle = "rgba(255,255,255,0.08)";
+        ctx.fillRect(x + w - 5, y, 5, h);
+        washWall(x, y, w, h, levelColor);
+      });
+    }
+
+    function drawLadderWall(x, y, w, h, levelColor) {
+      clipWall(x, y, w, h, () => {
+        ctx.fillStyle = "#151c28";
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = "#243044";
+        ctx.fillRect(x + 7, y, w - 14, h);
+        ctx.fillStyle = "#6f5636";
+        ctx.fillRect(x + 12, y, 5, h);
+        ctx.fillRect(x + w - 17, y, 5, h);
+        ctx.fillStyle = "#d2b07a";
+        ctx.fillRect(x + 13, y, 3, h);
+        ctx.fillRect(x + w - 16, y, 3, h);
+        for (let gy = y + 8; gy < y + h; gy += LADDER_RUNG_GAP) {
+          ctx.fillStyle = "#6f5636";
+          ctx.fillRect(x + 12, gy, w - 24, 4);
+          ctx.fillStyle = "#e0c48a";
+          ctx.fillRect(x + 12, gy, w - 24, 2);
+        }
+        washWall(x, y, w, h, levelColor);
+      });
+    }
+
+    function drawCloudWall(x, y, w, h, seed, levelColor) {
+      clipWall(x, y, w, h, () => {
+        ctx.fillStyle = "#c5d6ea";
+        ctx.fillRect(x, y, w, h);
+        for (let i = 0; i < 10; i += 1) {
+          const px = x + w * (0.12 + wallRand(seed, i) * 0.76);
+          const py = y + h * wallRand(seed, i + 20);
+          const radius = 14 + wallRand(seed, i + 40) * 20;
+          const puff = ctx.createRadialGradient(px, py, 0, px, py, radius);
+          puff.addColorStop(0, "rgba(255,255,255,0.96)");
+          puff.addColorStop(1, "rgba(176,198,226,0.2)");
+          ctx.fillStyle = puff;
+          ctx.beginPath();
+          ctx.ellipse(px, py, radius, radius * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        for (let i = 0; i < 4; i += 1) {
+          const px = x + 10 + i * (w - 20) / 3;
+          ctx.fillStyle = "#f3f7ff";
+          ctx.beginPath();
+          ctx.ellipse(px, y + h - 7, 15, 11, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        washWall(x, y, w, h, levelColor);
+      });
+    }
+
+    function drawBuildingWall(x, y, w, h, seed, levelColor) {
+      clipWall(x, y, w, h, () => {
+        ctx.fillStyle = "#1a2233";
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = "#263044";
+        ctx.fillRect(x + 3, y + 12, w - 6, h);
+        ctx.fillStyle = "#0d121c";
+        ctx.fillRect(x, y, w, 12);
+        ctx.fillStyle = "#3b465c";
+        ctx.fillRect(x + w * 0.62, y + 2, 12, 10);
+        const windowW = 13;
+        const windowH = 10;
+        const cols = 2;
+        const gutter = (w - 8 - cols * windowW) / (cols + 1);
+        let row = 0;
+        for (let gy = y + 20; gy < y + h - 30; gy += 17, row += 1) {
+          for (let col = 0; col < cols; col += 1) {
+            const lit = wallRand(seed, row * 8 + col) > 0.3;
+            ctx.fillStyle = lit ? "rgba(255, 214, 110, 0.88)" : "rgba(16, 22, 34, 0.92)";
+            ctx.fillRect(x + 4 + gutter + col * (windowW + gutter), gy, windowW, windowH);
+          }
+        }
+        ctx.fillStyle = "#10161f";
+        ctx.fillRect(x + w * 0.3, y + h - 24, w * 0.4, 24);
+        ctx.fillStyle = "rgba(255, 214, 110, 0.2)";
+        ctx.fillRect(x + w * 0.44, y + h - 16, 6, 6);
+        washWall(x, y, w, h, levelColor);
+      });
+    }
+
+    function drawTreeWall(x, y, w, h, seed, levelColor) {
+      clipWall(x, y, w, h, () => {
+        ctx.fillStyle = "#102418";
+        ctx.fillRect(x, y, w, h);
+        const trunkW = w * 0.44;
+        ctx.fillStyle = "#5a3820";
+        ctx.fillRect(x + (w - trunkW) / 2, y + 26, trunkW, h);
+        ctx.fillStyle = "#3d2414";
+        ctx.fillRect(x + (w - trunkW) / 2, y + 26, 5, h);
+        const canopies = [
+          [0.5, 0.1, 0.5],
+          [0.2, 0.2, 0.34],
+          [0.8, 0.18, 0.36],
+          [0.5, 0.3, 0.34],
+          [0.28, 0.44, 0.24],
+          [0.72, 0.46, 0.24],
+        ];
+        canopies.forEach((canopy, index) => {
+          const px = x + w * canopy[0];
+          const py = y + h * Math.min(0.52, canopy[1] + wallRand(seed, index) * 0.04);
+          const radius = w * canopy[2];
+          ctx.fillStyle = index % 2 === 0 ? "#2f8a46" : "#1f6a34";
+          ctx.beginPath();
+          ctx.ellipse(px, py, radius, radius * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        washWall(x, y, w, h, levelColor);
+      });
+    }
+
+    function drawPipePair(pipe, L) {
+      const topY = -24;
+      const topH = pipe.top + 24;
+      const botY = pipe.top + pipe.gap;
+      const botH = height - botY;
+      const seed = pipe.seed || 0;
+      const topKind = pipe.topKind || "brick";
+      const botKind = pipe.botKind || "brick";
+      if (topKind === "ladder") drawLadderWall(pipe.x, topY, PIPE_W, topH, L.pipe);
+      else if (topKind === "cloud") drawCloudWall(pipe.x, topY, PIPE_W, topH, seed, L.pipe);
+      else drawBrickWall(pipe.x, topY, PIPE_W, topH, seed, L.pipe);
+      if (botKind === "building") drawBuildingWall(pipe.x, botY, PIPE_W, botH, seed, L.pipe);
+      else if (botKind === "tree") drawTreeWall(pipe.x, botY, PIPE_W, botH, seed, L.pipe);
+      else drawBrickWall(pipe.x, botY, PIPE_W, botH, seed + 1, L.pipe);
+    }
+
     function draw() {
       const L = level();
       drawBackground(L);
@@ -1076,10 +1259,8 @@
       ctx.save();
       ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
-      ctx.fillStyle = L.pipe; ctx.strokeStyle = L.line; ctx.lineWidth = 2;
       for (const pipe of pipes) {
-        ctx.beginPath(); ctx.roundRect(pipe.x, -24, PIPE_W, pipe.top + 24, 14); ctx.fill(); ctx.stroke();
-        ctx.beginPath(); ctx.roundRect(pipe.x, pipe.top + pipe.gap, PIPE_W, height, 14); ctx.fill(); ctx.stroke();
+        drawPipePair(pipe, L);
       }
       for (const bit of starBits) {
         const twinkle = 0.72 + Math.sin(performance.now() / 160 + bit.twinkle) * 0.28;
