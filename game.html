@@ -109,6 +109,29 @@
       font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; cursor: pointer; pointer-events: auto;
     }
+    .practice-powers {
+      position: absolute; left: 20px; bottom: 28px; z-index: 3;
+      width: min(220px, calc(100vw - 148px)); padding: 10px 12px 8px;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+      background: rgba(8,10,18,0.55); text-align: left; pointer-events: auto;
+    }
+    .practice-powers h2 {
+      margin-bottom: 6px; color: var(--ink); font-size: 0.68rem;
+      letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .practice-power-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+    }
+    .practice-powers button {
+      width: 100%; padding: 7px 8px; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; background: rgba(255,255,255,0.06); color: var(--ink);
+      font: inherit; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; cursor: pointer;
+    }
+    .practice-powers button.active {
+      background: rgba(255,255,255,0.16);
+      box-shadow: 0 0 0 1px currentColor;
+    }
     .panel.studio {
       width: min(760px, calc(100vw - 24px));
       text-align: left;
@@ -157,7 +180,7 @@
       <div id="controlLine" class="hud-line">Fly <strong>Jump</strong></div>
       <div id="powerHud" class="power hidden"><span id="powerName">Ready</span><div class="bar"><span id="powerBar"></span></div></div>
     </div>
-    <div class="legend" aria-label="Orb legend">
+    <div id="legend" class="legend" aria-label="Orb legend">
       <h2>Power-ups</h2>
       <div class="legend-row"><span class="legend-dot" style="background:#f4f7ff;color:#f4f7ff"></span>White mouse-drag</div>
       <div class="legend-row"><span class="legend-dot" style="background:#ff8ac8;color:#ff8ac8"></span>Pink shield</div>
@@ -236,6 +259,18 @@
       <button id="studioDone" type="button">Done</button>
       <button id="studioResetLook" class="ghost" type="button">Reset hero</button>
     </section>
+    <div id="practicePowers" class="practice-powers hidden" aria-label="Practice power">
+      <h2>Hero power</h2>
+      <div class="practice-power-grid">
+        <button type="button" data-power="" class="active">None</button>
+        <button type="button" data-power="mouse" style="color:#f4f7ff">Mouse</button>
+        <button type="button" data-power="shield" style="color:#ff8ac8">Shield</button>
+        <button type="button" data-power="drift" style="color:#7ee7ff">Drift</button>
+        <button type="button" data-power="tiny" style="color:#9dffb0">Tiny</button>
+        <button type="button" data-power="gold" style="color:#ffe08a">Double</button>
+        <button type="button" data-power="dash" style="color:#ff7a4a">Dash</button>
+      </div>
+    </div>
     <button id="leaveBtn" class="leave hidden" type="button">Menu</button>
     <button id="jumpBtn" class="jump hidden" type="button">Jump</button>
     <section id="over" class="panel hidden">
@@ -273,6 +308,8 @@
     const jumpBtn = document.getElementById("jumpBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const controlLine = document.getElementById("controlLine");
+    const legend = document.getElementById("legend");
+    const practicePowers = document.getElementById("practicePowers");
     const studioPanel = document.getElementById("studio");
     const studioView = document.getElementById("studioView");
     const studioCtx = studioView.getContext("2d");
@@ -306,13 +343,13 @@
       mouse: { name: "Mouse", color: "#f4f7ff", duration: 7, freq: 520 },
     };
     const ORB_TYPES = Object.keys(POWERS);
-    const ORB_LABELS = {
-      shield: "SHIELD",
-      drift: "DRIFT",
-      tiny: "TINY",
-      gold: "DOUBLE",
-      dash: "DASH",
-      mouse: "MOUSE",
+    const PRACTICE_POWER_HINTS = {
+      shield: "Shield — clip a wall",
+      drift: "Drift — slower fall",
+      tiny: "Tiny — smaller hitbox",
+      gold: "Double — extra score",
+      dash: "Dash — hold left click",
+      mouse: "Mouse — hold and drag",
     };
     const PRACTICE_COURSE = [
       { orb: null, title: "Warm up", hint: "Warm up", gap: 228 },
@@ -403,7 +440,8 @@
     let mouseY = 0, mouseX = 0, pointerHeld = false;
     let birdVx = 0;
     let dashHoldTime = -1, dashUsedThisHold = false, dashBoost = 0;
-    let practice = false, practiceSpawnIndex = 0, practiceTitle = "Training range";
+    let practice = false, practiceSpawnIndex = 0;
+    let practicePower = null;
     let best = Number(localStorage.getItem("flux-bird-best") || 0);
     playerName.value = localStorage.getItem("flux-bird-name") || "";
     let look = loadLook();
@@ -423,6 +461,41 @@
 
     function syncJumpButton() {
       jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse()));
+    }
+
+    function syncPracticePowerUi() {
+      const inPractice = practice && mode === "play";
+      practicePowers.classList.toggle("hidden", !inPractice);
+      legend.classList.toggle("hidden", inPractice);
+      practicePowers.querySelectorAll("[data-power]").forEach((btn) => {
+        const value = btn.getAttribute("data-power") || "";
+        btn.classList.toggle("active", (practicePower || "") === value);
+      });
+    }
+
+    function applyPracticePower(type, announce) {
+      const next = type && POWERS[type] ? type : null;
+      const wasMouse = power === "mouse";
+      practicePower = next;
+      shield = next === "shield";
+      if (!next) {
+        power = null;
+        powerLeft = 0;
+      } else {
+        const spec = POWERS[next];
+        power = next;
+        powerMax = spec.duration;
+        powerLeft = spec.duration;
+      }
+      if (wasMouse && next !== "mouse") pointerHeld = false;
+      updatePowerHud();
+      syncJumpButton();
+      syncFlyHud();
+      syncPracticePowerUi();
+      updateMeta();
+      if (announce) {
+        showBanner(next ? (PRACTICE_POWER_HINTS[next] || POWERS[next].name) : "No power");
+      }
     }
 
     function level() { return LEVELS[levelIndex]; }
@@ -624,15 +697,7 @@
         topWall,
         botWall,
       });
-      if (lesson) {
-        if (lesson.orb) {
-          orbs.push({
-            x: x + PIPE_W / 2,
-            y: top + gap / 2,
-            type: lesson.orb,
-          });
-        }
-      } else if (Math.random() < POWER_ORB_CHANCE) {
+      if (!practice && Math.random() < POWER_ORB_CHANCE) {
         orbs.push({
           x: x + PIPE_W / 2 + (Math.random() - 0.5) * 18,
           y: top + gap / 2 + (Math.random() - 0.5) * (gap * 0.28),
@@ -698,7 +763,7 @@
     function updateMeta() {
       if (practice) {
         levelLine.innerHTML = "Practice";
-        mapLine.textContent = practiceTitle;
+        mapLine.textContent = practicePower ? POWERS[practicePower].name : "No power";
         bestLine.innerHTML = `Esc <strong>Menu</strong>`;
         return;
       }
@@ -717,7 +782,6 @@
       scoreEl.textContent = "0"; pendingScore = 0;
       dashHoldTime = -1; dashUsedThisHold = false; dashBoost = 0;
       practiceSpawnIndex = 0;
-      practiceTitle = practice ? "Training range" : level().name;
       syncFlyHud();
       updatePowerHud(); updateMeta();
       const spacing = practice ? 360 : level().spacing;
@@ -749,6 +813,11 @@
       if (!power && !shield) { powerHud.classList.add("hidden"); return; }
       const spec = POWERS[power] || POWERS.shield;
       powerHud.classList.remove("hidden"); powerHud.style.color = spec.color;
+      if (practice && practicePower) {
+        powerName.textContent = spec.name;
+        powerBar.style.width = "100%";
+        return;
+      }
       if (power === "shield" || (shield && !power)) { powerName.textContent = "Shield"; powerBar.style.width = "100%"; }
       else { powerName.textContent = spec.name; powerBar.style.width = `${Math.max(0, (powerLeft / powerMax) * 100)}%`; }
     }
@@ -905,7 +974,11 @@
       resetRun();
       mode = "play";
       leaveBtn.classList.toggle("hidden", !practice);
-      if (practice) showBanner("Practice range");
+      syncPracticePowerUi();
+      if (practice) {
+        applyPracticePower(practicePower, false);
+        showBanner(practicePower ? PRACTICE_POWER_HINTS[practicePower] : "Practice range");
+      }
       if (usingMouse()) {
         birdY = Math.max(40, Math.min(height - GROUND - 40, mouseY || height * 0.42));
         birdV = 0; birdVx = 0;
@@ -920,10 +993,13 @@
       overPanel.classList.add("hidden");
       startPanel.classList.remove("hidden");
       mode = "ready";
+      power = null; powerLeft = 0; shield = false;
+      updatePowerHud();
       updateMeta();
       renderBoard(startBoard);
       syncJumpButton();
       syncFlyHud();
+      syncPracticePowerUi();
     }
 
     function flap() {
@@ -956,6 +1032,10 @@
     function crash() {
       if (mode !== "play" || invuln > 0) return;
       if (shield) {
+        if (practice && practicePower === "shield") {
+          bouncePractice();
+          return;
+        }
         shield = false;
         if (power === "shield") { power = null; powerLeft = 0; }
         invuln = 1.05; birdV = FLAP * 0.7; shake = 7;
@@ -991,17 +1071,22 @@
       }
       if (mode === "play") {
         if (power) {
-          powerLeft -= dt;
-          if (powerLeft <= 0) {
-            const wasMouse = power === "mouse";
-            if (power !== "shield") power = null;
-            powerLeft = 0; updatePowerHud();
-            if (wasMouse) {
-              pointerHeld = false;
-              syncJumpButton();
-              syncFlyHud();
-            }
-          } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
+          if (practice && practicePower) {
+            powerLeft = powerMax;
+            powerBar.style.width = "100%";
+          } else {
+            powerLeft -= dt;
+            if (powerLeft <= 0) {
+              const wasMouse = power === "mouse";
+              if (power !== "shield") power = null;
+              powerLeft = 0; updatePowerHud();
+              if (wasMouse) {
+                pointerHeld = false;
+                syncJumpButton();
+                syncFlyHud();
+              }
+            } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
+          }
         }
         invuln = Math.max(0, invuln - dt);
         if (pointerHeld && dashHoldTime >= 0) {
@@ -1057,14 +1142,6 @@
 
         for (const pipe of pipes) {
           pipe.x -= speed * dt;
-          if (practice && !pipe.applied && pipe.x < width * 0.82) {
-            pipe.applied = true;
-            if (pipe.title) {
-              practiceTitle = pipe.title;
-              mapLine.textContent = pipe.title;
-            }
-            if (pipe.hint) showBanner(pipe.hint);
-          }
           if (!pipe.passed && pipeRight(pipe) < birdX) {
             pipe.passed = true;
             addScore(power === "gold" ? 2 : 1);
@@ -2032,6 +2109,12 @@
       event.stopPropagation();
       leavePractice();
     });
+    practicePowers.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-power]");
+      if (!btn || !practice || mode !== "play") return;
+      event.stopPropagation();
+      applyPracticePower(btn.getAttribute("data-power") || null, true);
+    });
     document.getElementById("playBtn").addEventListener("click", (event) => {
       event.stopPropagation();
       startGame(false);
@@ -2049,6 +2132,7 @@
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");
       practice = false; leaveBtn.classList.add("hidden");
       mode = "ready"; renderBoard(startBoard); syncJumpButton(); syncFlyHud(); updateMeta();
+      syncPracticePowerUi();
     });
     document.getElementById("studioBtn").addEventListener("click", (event) => {
       event.stopPropagation();
