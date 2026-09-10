@@ -46,16 +46,17 @@
     .bar { height: 3px; margin-top: 6px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,0.12); }
     .bar > span { display: block; height: 100%; width: 0%; background: currentColor; }
     .legend {
-      margin-top: 8px; min-width: 148px; padding: 10px 12px 8px;
+      position: absolute; left: 20px; bottom: 28px;
+      min-width: 148px; padding: 10px 12px 8px;
       border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
       background: rgba(8,10,18,0.55); text-align: left;
     }
     .legend h2 {
       margin-bottom: 6px; color: var(--ink); font-size: 0.68rem;
-      letter-spacing: 0.14em; text-transform: uppercase; text-align: right;
+      letter-spacing: 0.14em; text-transform: uppercase; text-align: left;
     }
     .legend-row {
-      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      display: flex; align-items: center; justify-content: flex-start; gap: 8px;
       margin: 4px 0; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.04em;
     }
     .legend-dot {
@@ -80,8 +81,10 @@
     .orbs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin: 0 0 12px; color: var(--muted); font-size: 0.76rem; text-align: left; }
     .board { margin: 0 0 12px; text-align: left; color: var(--muted); font-size: 0.82rem; }
     .board h2 { margin-bottom: 6px; color: var(--ink); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; }
-    .board ol { padding-left: 18px; }
+    .board ol { padding-left: 0; list-style: none; }
     .board li { margin: 3px 0; }
+    .board-row { display: flex; align-items: center; gap: 8px; }
+    .board-orb { width: 22px; height: 22px; flex: 0 0 22px; }
     .name-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .name-row input {
       flex: 1; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.12);
@@ -92,13 +95,6 @@
       background: var(--accent); color: #041018; font: inherit; font-weight: 700; cursor: pointer;
     }
     .ghost { margin-top: 8px; background: rgba(255,255,255,0.08); color: var(--ink); }
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
-    .choice {
-      width: 100%; padding: 10px 4px; border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--ink);
-      font: inherit; font-size: 0.72rem; font-weight: 650; cursor: pointer;
-    }
-    .choice.on { background: var(--accent); color: #041018; border-color: transparent; }
     .jump {
       position: absolute; right: 20px; bottom: 28px; z-index: 3;
       width: 96px; height: 96px; border: 0; border-radius: 50%;
@@ -113,20 +109,40 @@
       font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
       text-transform: uppercase; cursor: pointer; pointer-events: auto;
     }
-    .range-row {
-      display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
-      color: var(--muted); font-size: 0.76rem; text-align: left;
+    .panel.studio {
+      width: min(760px, calc(100vw - 24px));
+      text-align: left;
     }
-    .range-row label { flex: 0 0 auto; letter-spacing: 0.06em; text-transform: uppercase; }
-    .range-row input[type="range"] { flex: 1; accent-color: #ffb07a; }
-    .range-row span { min-width: 2.4em; text-align: right; color: var(--ink); }
-    .web-range-hud {
-      position: absolute; left: 20px; bottom: 28px; z-index: 3;
-      width: min(220px, calc(100vw - 140px)); padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.12); border-radius: 14px;
-      background: rgba(8,10,18,0.7); pointer-events: auto;
+    .studio-grid {
+      display: grid; grid-template-columns: minmax(200px, 240px) 1fr; gap: 14px;
     }
-    .web-range-hud .range-row { margin: 0; }
+    .studio-stage {
+      padding: 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+      background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.08), rgba(0,0,0,0.25));
+    }
+    #studioView { display: block; width: 100%; height: 220px; cursor: grab; touch-action: none; }
+    #studioView.grabbing { cursor: grabbing; }
+    .studio-hint { margin: 8px 0 10px; color: var(--muted); font-size: 0.74rem; line-height: 1.35; }
+    .studio-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .studio-tools button { padding: 8px 6px; font-size: 0.75rem; }
+    .studio-fields { max-height: min(58vh, 520px); overflow: auto; padding-right: 4px; }
+    .field {
+      display: grid; grid-template-columns: 92px 1fr 36px; align-items: center; gap: 8px;
+      margin: 6px 0; color: var(--muted); font-size: 0.72rem;
+    }
+    .field label { letter-spacing: 0.04em; text-transform: uppercase; }
+    .field input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .field select, .presets {
+      width: 100%; margin: 6px 0 10px; padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 10px;
+      background: rgba(255,255,255,0.05); color: var(--ink); font: inherit; font-size: 0.78rem;
+    }
+    .presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 0; border: 0; background: none; }
+    .presets button { padding: 7px 4px; font-size: 0.68rem; }
+    @media (max-width: 640px) {
+      .studio-grid { grid-template-columns: 1fr; }
+      #studioView { height: 180px; }
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -140,29 +156,21 @@
       <div id="bestLine" class="hud-line">Best 0</div>
       <div id="controlLine" class="hud-line">Fly <strong>Jump</strong></div>
       <div id="powerHud" class="power hidden"><span id="powerName">Ready</span><div class="bar"><span id="powerBar"></span></div></div>
-      <div class="legend" aria-label="Orb legend">
-        <h2>Orbs</h2>
-        <div class="legend-row">White mouse-drag<span class="legend-dot" style="background:#f4f7ff;color:#f4f7ff"></span></div>
-        <div class="legend-row">Pink shield<span class="legend-dot" style="background:#ff8ac8;color:#ff8ac8"></span></div>
-        <div class="legend-row">Cyan drift<span class="legend-dot" style="background:#7ee7ff;color:#7ee7ff"></span></div>
-        <div class="legend-row">Green tiny<span class="legend-dot" style="background:#9dffb0;color:#9dffb0"></span></div>
-        <div class="legend-row">Gold double<span class="legend-dot" style="background:#ffe08a;color:#ffe08a"></span></div>
-        <div class="legend-row">Orange dash<span class="legend-dot" style="background:#ff7a4a;color:#ff7a4a"></span></div>
-      </div>
+    </div>
+    <div class="legend" aria-label="Orb legend">
+      <h2>Power-ups</h2>
+      <div class="legend-row"><span class="legend-dot" style="background:#ffe9a8;color:#ffe9a8"></span>Stars +1</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#f4f7ff;color:#f4f7ff"></span>White mouse-drag</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#ff8ac8;color:#ff8ac8"></span>Pink shield</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#7ee7ff;color:#7ee7ff"></span>Cyan drift</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#9dffb0;color:#9dffb0"></span>Green tiny</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#ffe08a;color:#ffe08a"></span>Gold double</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#ff7a4a;color:#ff7a4a"></span>Orange dash</div>
     </div>
     <div id="banner" class="banner"></div>
     <section id="start" class="panel">
       <h1>Flap me Orbs</h1>
-      <p>Pick Jump or Web, then Play. In Web, you can only sling a wall inside the dashed reach circle. Practice walks through every power-up.</p>
-      <div class="controls" id="modeChoices">
-        <button class="choice on" type="button" data-mode="tap">Jump</button>
-        <button class="choice" type="button" data-mode="swing">Web</button>
-      </div>
-      <div class="range-row">
-        <label for="webRangeMenu">Web reach</label>
-        <input id="webRangeMenu" type="range" min="140" max="340" step="10" />
-        <span id="webRangeMenuVal">210</span>
-      </div>
+      <p>Steer your hero through pipes and star trails. Jump to fly. Power-up orbs are rare.</p>
       <div class="orbs">
         <div><b style="color:#f4f7ff">White</b> mouse-drag</div>
         <div><b style="color:#ff8ac8">Pink</b> shield</div>
@@ -170,19 +178,66 @@
         <div><b style="color:#9dffb0">Green</b> tiny</div>
         <div><b style="color:#ffe08a">Gold</b> double</div>
         <div><b style="color:#ff7a4a">Orange</b> dash</div>
+        <div><b style="color:#ffe9a8">Stars</b> +1 point</div>
       </div>
       <div class="board"><h2>Leaderboard</h2><ol id="startBoard"></ol></div>
       <button id="playBtn" type="button">Play</button>
       <button id="practiceBtn" class="ghost" type="button">Practice</button>
+      <button id="studioBtn" class="ghost" type="button">Modify your hero</button>
+    </section>
+    <section id="studio" class="panel studio hidden">
+      <h1>Modify your hero</h1>
+      <p>Drag to rotate. Click to jump. Drag up or down to squeeze. Your hero is saved and shown on the leaderboard.</p>
+      <div class="studio-grid">
+        <div class="studio-stage">
+          <canvas id="studioView" width="240" height="220"></canvas>
+          <p class="studio-hint">Try your hero before you fly.</p>
+          <div class="studio-tools">
+            <button id="studioJump" type="button">Jump</button>
+            <button id="studioSqueeze" type="button">Squeeze</button>
+            <button id="studioSpin" type="button">Spin</button>
+            <button id="studioResetPose" class="ghost" type="button">Reset pose</button>
+          </div>
+        </div>
+        <div class="studio-fields">
+          <div class="presets">
+            <button type="button" data-preset="ember">Ember</button>
+            <button type="button" data-preset="ion">Ion</button>
+            <button type="button" data-preset="frost">Frost</button>
+            <button type="button" data-preset="neon">Neon</button>
+            <button type="button" data-preset="gold">Gold</button>
+          </div>
+          <label class="field"><span>Shape</span>
+            <select id="lookShape">
+              <option value="circle">Circle</option>
+              <option value="squircle">Squircle</option>
+              <option value="hex">Hex</option>
+              <option value="diamond">Diamond</option>
+              <option value="petal">Petal</option>
+            </select>
+            <span></span>
+          </label>
+          <label class="field"><span>Hue</span><input id="lookHue" type="range" min="0" max="360" /><span id="lookHueVal"></span></label>
+          <label class="field"><span>Sat</span><input id="lookSat" type="range" min="20" max="100" /><span id="lookSatVal"></span></label>
+          <label class="field"><span>Light</span><input id="lookLight" type="range" min="35" max="88" /><span id="lookLightVal"></span></label>
+          <label class="field"><span>Glow</span><input id="lookGlow" type="range" min="0" max="100" /><span id="lookGlowVal"></span></label>
+          <label class="field"><span>Glow hue</span><input id="lookGlowHue" type="range" min="0" max="360" /><span id="lookGlowHueVal"></span></label>
+          <label class="field"><span>Size</span><input id="lookScale" type="range" min="70" max="130" /><span id="lookScaleVal"></span></label>
+          <label class="field"><span>Eyes</span><input id="lookEyes" type="range" min="1" max="2" step="1" /><span id="lookEyesVal"></span></label>
+          <label class="field"><span>Eye size</span><input id="lookEyeSize" type="range" min="50" max="160" /><span id="lookEyeSizeVal"></span></label>
+          <label class="field"><span>Eye hue</span><input id="lookEyeHue" type="range" min="0" max="360" /><span id="lookEyeHueVal"></span></label>
+          <label class="field"><span>Shine</span><input id="lookShine" type="range" min="0" max="100" /><span id="lookShineVal"></span></label>
+          <label class="field"><span>Cheeks</span><input id="lookCheek" type="range" min="0" max="100" /><span id="lookCheekVal"></span></label>
+          <label class="field"><span>Outline</span><input id="lookOutline" type="range" min="0" max="8" /><span id="lookOutlineVal"></span></label>
+          <label class="field"><span>Line hue</span><input id="lookLineHue" type="range" min="0" max="360" /><span id="lookLineHueVal"></span></label>
+          <label class="field"><span>Sparkle</span><input id="lookSparkle" type="range" min="0" max="8" /><span id="lookSparkleVal"></span></label>
+          <label class="field"><span>Idle spin</span><input id="lookSpin" type="range" min="0" max="100" /><span id="lookSpinVal"></span></label>
+        </div>
+      </div>
+      <button id="studioDone" type="button">Done</button>
+      <button id="studioResetLook" class="ghost" type="button">Reset hero</button>
     </section>
     <button id="leaveBtn" class="leave hidden" type="button">Menu</button>
-    <div id="webRangeHud" class="web-range-hud hidden">
-      <div class="range-row">
-        <label for="webRangePlay">Web reach</label>
-        <input id="webRangePlay" type="range" min="140" max="340" step="10" />
-        <span id="webRangePlayVal">210</span>
-      </div>
-    </div>
     <button id="jumpBtn" class="jump hidden" type="button">Jump</button>
     <section id="over" class="panel hidden">
       <h1>Crash</h1>
@@ -217,18 +272,14 @@
     const jumpBtn = document.getElementById("jumpBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const controlLine = document.getElementById("controlLine");
-    const webRangeHud = document.getElementById("webRangeHud");
-    const webRangeMenu = document.getElementById("webRangeMenu");
-    const webRangePlay = document.getElementById("webRangePlay");
-    const webRangeMenuVal = document.getElementById("webRangeMenuVal");
-    const webRangePlayVal = document.getElementById("webRangePlayVal");
+    const studioPanel = document.getElementById("studio");
+    const studioView = document.getElementById("studioView");
+    const studioCtx = studioView.getContext("2d");
 
-    const BIRD_R = 16, PIPE_W = 70, GROUND = 88, ORB_R = 11, FLAP = -620, MAX_FALL = 920;
-    const WEB_RADIUS_MIN = 140;
-    const WEB_RADIUS_MAX = 340;
-    const WEB_RADIUS_DEFAULT = 210;
-    const WEB_GAP = 64;
-    const WEB_SPACING = 56;
+    const BIRD_R = 16, PIPE_W = 70, GROUND = 88, ORB_R = 11, STAR_R = 6, FLAP = -620, MAX_FALL = 920;
+    const POWER_ORB_CHANCE = 0.13;
+    const STAR_TRAIL_CHANCE = 0.8;
+    const STAR_VALUE = 1;
     const DASH_HOLD = 0.18;
     const DASH_SPEED = 980;
     const DASH_TIME = 0.16;
@@ -270,15 +321,25 @@
       { orb: "mouse", title: "Mouse", hint: "Mouse — hold and drag", gap: 240 },
       { orb: null, title: "Mouse", hint: "Release to fall", gap: 214 },
       { orb: null, title: "Mouse", hint: null, gap: 214 },
-      { orb: null, title: "Web", hint: "Web — hold a pipe", gap: 244, mode: "swing" },
-      { orb: null, title: "Web", hint: "Release to let go", gap: 232, mode: "swing" },
-      { orb: null, title: "Web", hint: null, gap: 232, mode: "swing" },
-      { orb: null, title: "Jump", hint: "Back to jump", gap: 220 },
     ];
-    const MODES = {
-      tap: { name: "Jump", color: "#7ee7ff" },
-      swing: { name: "Web", color: "#ffb07a" },
+    const DEFAULT_LOOK = {
+      hue: 40, sat: 90, light: 72, glow: 70, glowHue: 40, scale: 100,
+      eyes: 1, eyeSize: 100, eyeHue: 210, shine: 70, cheek: 15,
+      outline: 0, lineHue: 40, sparkle: 0, spin: 0, shape: "circle",
     };
+    const LOOK_PRESETS = {
+      ember: { hue: 18, sat: 92, light: 62, glow: 80, glowHue: 28, scale: 104, eyes: 1, eyeSize: 110, eyeHue: 25, shine: 55, cheek: 40, outline: 2, lineHue: 12, sparkle: 2, spin: 8, shape: "circle" },
+      ion: { hue: 190, sat: 88, light: 70, glow: 86, glowHue: 186, scale: 100, eyes: 2, eyeSize: 90, eyeHue: 200, shine: 80, cheek: 10, outline: 0, lineHue: 190, sparkle: 3, spin: 0, shape: "squircle" },
+      frost: { hue: 205, sat: 55, light: 82, glow: 64, glowHue: 210, scale: 96, eyes: 2, eyeSize: 100, eyeHue: 220, shine: 90, cheek: 20, outline: 1, lineHue: 200, sparkle: 5, spin: 4, shape: "hex" },
+      neon: { hue: 128, sat: 95, light: 62, glow: 90, glowHue: 140, scale: 108, eyes: 1, eyeSize: 120, eyeHue: 90, shine: 40, cheek: 0, outline: 3, lineHue: 110, sparkle: 1, spin: 16, shape: "diamond" },
+      gold: { hue: 46, sat: 95, light: 68, glow: 88, glowHue: 42, scale: 110, eyes: 1, eyeSize: 95, eyeHue: 40, shine: 85, cheek: 25, outline: 2, lineHue: 38, sparkle: 6, spin: 10, shape: "petal" },
+    };
+    const LOOK_FIELDS = [
+      ["lookHue", "hue"], ["lookSat", "sat"], ["lookLight", "light"], ["lookGlow", "glow"],
+      ["lookGlowHue", "glowHue"], ["lookScale", "scale"], ["lookEyes", "eyes"], ["lookEyeSize", "eyeSize"],
+      ["lookEyeHue", "eyeHue"], ["lookShine", "shine"], ["lookCheek", "cheek"], ["lookOutline", "outline"],
+      ["lookLineHue", "lineHue"], ["lookSparkle", "sparkle"], ["lookSpin", "spin"],
+    ];
     const LEVELS = [
       {
         name: "Dusk Vale", min: 0, speed: 205, gap: 184, spacing: 310, gravity: 1980,
@@ -321,102 +382,30 @@
     const audio = new (window.AudioContext || window.webkitAudioContext)();
     let width = 0, height = 0, dpr = 1, last = 0, mode = "ready";
     let birdY = 0, birdV = 0, birdX = 0, angle = 0;
-    let pipes = [], orbs = [], particles = [], stars = [];
+    let pipes = [], orbs = [], starBits = [], particles = [], stars = [];
     let score = 0, speed = 205, shake = 0, invuln = 0, scroll = 0;
     let power = null, powerLeft = 0, powerMax = 1, shield = false, levelIndex = 0;
     let pendingScore = 0, bannerT = 0, bannerText = "";
-    let mouseY = 0, mouseX = 0, controlMode = "tap", pointerHeld = false;
-    let birdVx = 0, rope = null, missRope = null;
+    let mouseY = 0, mouseX = 0, pointerHeld = false;
+    let birdVx = 0;
     let dashHoldTime = -1, dashUsedThisHold = false, dashBoost = 0;
     let practice = false, practiceSpawnIndex = 0, practiceTitle = "Training range";
-    let selectedMode = localStorage.getItem("flux-bird-mode") || "tap";
-    if (!MODES[selectedMode]) selectedMode = "tap";
-    let webRadius = Number(localStorage.getItem("flux-bird-web-radius") || WEB_RADIUS_DEFAULT);
-    if (!Number.isFinite(webRadius)) webRadius = WEB_RADIUS_DEFAULT;
-    webRadius = Math.max(WEB_RADIUS_MIN, Math.min(WEB_RADIUS_MAX, webRadius));
     let best = Number(localStorage.getItem("flux-bird-best") || 0);
     playerName.value = localStorage.getItem("flux-bird-name") || "";
-
-    function setControl(modeName, announce) {
-      const keys = Object.keys(MODES);
-      controlMode = keys.includes(modeName) ? modeName : "tap";
-      if (controlMode !== "swing") {
-        rope = null;
-        birdVx = 0;
-      } else {
-        easeWebCourse();
-      }
-      syncJumpButton();
-      syncWebRangeHud();
-      controlLine.innerHTML = `Fly <strong>${MODES[controlMode].name}</strong>`;
-      if (announce) {
-        showBanner(MODES[controlMode].name);
-        beep(controlMode === "swing" ? 280 : 400, 0.14, "triangle", 0.055);
-      }
-    }
+    let look = loadLook();
+    let studioOpen = false;
+    let studioPose = { angle: 0, y: 0, v: 0, squeeze: 1, spinning: false, drag: false, lastX: 0, lastY: 0, moved: false };
 
     function usingMouse() {
       return power === "mouse";
     }
 
-    function easeWebCourse() {
-      for (const pipe of pipes) {
-        pipe.gap = Math.min(pipe.gap + WEB_GAP, height - GROUND - 150);
-        pipe.top = Math.max(64, pipe.top - WEB_GAP * 0.35);
-      }
+    function syncFlyHud() {
+      controlLine.innerHTML = usingMouse() ? "Fly <strong>Mouse</strong>" : "Fly <strong>Jump</strong>";
     }
 
     function syncJumpButton() {
-      jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse() && (controlMode === "tap" || controlMode === "swing")));
-    }
-
-    function setWebRadius(value) {
-      webRadius = Math.max(WEB_RADIUS_MIN, Math.min(WEB_RADIUS_MAX, Math.round(Number(value) || WEB_RADIUS_DEFAULT)));
-      localStorage.setItem("flux-bird-web-radius", String(webRadius));
-      syncWebRangeControls();
-    }
-
-    function syncWebRangeControls() {
-      webRangeMenu.value = String(webRadius);
-      webRangePlay.value = String(webRadius);
-      webRangeMenuVal.textContent = String(webRadius);
-      webRangePlayVal.textContent = String(webRadius);
-    }
-
-    function syncWebRangeHud() {
-      webRangeHud.classList.toggle("hidden", !(mode === "play" && controlMode === "swing" && !usingMouse()));
-    }
-
-    function nearestWallPoint() {
-      let bestHit = null;
-      for (const pipe of pipes) {
-        for (const box of pipeBoxes(pipe)) {
-          const pt = closestOnBox(birdX, birdY, box);
-          const dist = Math.hypot(pt.x - birdX, pt.y - birdY);
-          if (dist < 24) continue;
-          if (!bestHit || dist < bestHit.d) bestHit = { pipe, x: pt.x, y: pt.y, d: dist };
-        }
-      }
-      return bestHit;
-    }
-
-    function wallInWebRange() {
-      const near = nearestWallPoint();
-      return near && near.d <= webRadius ? near : null;
-    }
-
-    function syncModeChoices() {
-      document.querySelectorAll("#modeChoices .choice").forEach((btn) => {
-        btn.classList.toggle("on", btn.dataset.mode === selectedMode);
-      });
-    }
-
-    function pickMode(modeName) {
-      if (!MODES[modeName]) return;
-      selectedMode = modeName;
-      localStorage.setItem("flux-bird-mode", selectedMode);
-      setControl(selectedMode);
-      syncModeChoices();
+      jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse()));
     }
 
     function level() { return LEVELS[levelIndex]; }
@@ -426,15 +415,57 @@
       return index;
     }
 
+    function clampLook(raw) {
+      const next = { ...DEFAULT_LOOK, ...(raw || {}) };
+      next.shape = ["circle", "squircle", "hex", "diamond", "petal"].includes(next.shape) ? next.shape : "circle";
+      next.hue = Number(next.hue) || 0;
+      next.sat = Number(next.sat) || DEFAULT_LOOK.sat;
+      next.light = Number(next.light) || DEFAULT_LOOK.light;
+      next.glow = Number(next.glow) || 0;
+      next.glowHue = Number(next.glowHue) || next.hue;
+      next.scale = Number(next.scale) || 100;
+      next.eyes = next.eyes >= 2 ? 2 : 1;
+      next.eyeSize = Number(next.eyeSize) || 100;
+      next.eyeHue = Number(next.eyeHue) || 210;
+      next.shine = Number(next.shine) || 0;
+      next.cheek = Number(next.cheek) || 0;
+      next.outline = Number(next.outline) || 0;
+      next.lineHue = Number(next.lineHue) || next.hue;
+      next.sparkle = Number(next.sparkle) || 0;
+      next.spin = Number(next.spin) || 0;
+      return next;
+    }
+
+    function loadLook() {
+      try { return clampLook(JSON.parse(localStorage.getItem("flux-bird-look") || "{}")); }
+      catch { return { ...DEFAULT_LOOK }; }
+    }
+
+    function snapshotLook() {
+      return { ...look };
+    }
+
+    function persistLook() {
+      look = clampLook(look);
+      localStorage.setItem("flux-bird-look", JSON.stringify(look));
+    }
+
     function loadBoard() {
       try { return JSON.parse(localStorage.getItem("flux-bird-board") || "[]"); }
       catch { return []; }
     }
     function renderBoard(target) {
       const rows = loadBoard();
-      target.innerHTML = rows.length
-        ? rows.map((row) => `<li>${row.name} · ${row.score} · ${row.level}</li>`).join("")
-        : "<li>No scores yet</li>";
+      if (!rows.length) {
+        target.innerHTML = "<li>No scores yet</li>";
+        return;
+      }
+      target.innerHTML = rows.map((row, index) => (
+        `<li class="board-row"><canvas class="board-orb" width="36" height="36" data-i="${index}"></canvas><span>${row.name} · ${row.score} · ${row.level}</span></li>`
+      )).join("");
+      target.querySelectorAll(".board-orb").forEach((canvasNode, index) => {
+        paintBoardOrb(canvasNode, rows[index].look);
+      });
     }
     function qualify(value) {
       const rows = loadBoard();
@@ -442,7 +473,12 @@
     }
     function saveScore(name, value) {
       const rows = loadBoard();
-      rows.push({ name: name.slice(0, 14) || "Pilot", score: value, level: LEVELS[levelForScore(value)].name });
+      rows.push({
+        name: name.slice(0, 14) || "Pilot",
+        score: value,
+        level: LEVELS[levelForScore(value)].name,
+        look: snapshotLook(),
+      });
       rows.sort((a, b) => b.score - a.score);
       localStorage.setItem("flux-bird-board", JSON.stringify(rows.slice(0, 10)));
       renderBoard(startBoard);
@@ -483,9 +519,7 @@
       const L = level();
       const lesson = practice ? PRACTICE_COURSE[practiceSpawnIndex % PRACTICE_COURSE.length] : null;
       if (practice) practiceSpawnIndex += 1;
-      const gap = lesson
-        ? lesson.gap
-        : L.gap + (controlMode === "swing" ? WEB_GAP : 0);
+      const gap = lesson ? lesson.gap : L.gap;
       const margin = 86;
       const maxTop = height - GROUND - margin - gap;
       const top = practice
@@ -495,7 +529,6 @@
         x, top, gap, passed: false,
         hint: lesson ? lesson.hint : null,
         title: lesson ? lesson.title : null,
-        lessonMode: lesson ? lesson.mode : null,
         applied: false,
       });
       if (lesson) {
@@ -506,15 +539,52 @@
             type: lesson.orb,
           });
         }
-        return;
-      }
-      if (Math.random() < 0.78) {
+      } else if (Math.random() < POWER_ORB_CHANCE) {
         orbs.push({
-          x: x + PIPE_W / 2,
-          y: top + gap / 2 + (Math.random() - 0.5) * 14,
+          x: x + PIPE_W / 2 + (Math.random() - 0.5) * 18,
+          y: top + gap / 2 + (Math.random() - 0.5) * (gap * 0.28),
           type: ORB_TYPES[Math.floor(Math.random() * ORB_TYPES.length)],
         });
       }
+      if (Math.random() < STAR_TRAIL_CHANCE) spawnStarTrail(x, top, gap);
+    }
+
+    function spawnStarTrail(pipeX, top, gap) {
+      const midY = top + gap / 2;
+      const count = 4 + Math.floor(Math.random() * 6);
+      const style = Math.floor(Math.random() * 4);
+      const spacing = 22 + Math.random() * 18;
+      const startX = pipeX + PIPE_W + 16 + Math.random() * 24;
+      const amp = 10 + Math.random() * Math.min(42, gap * 0.28);
+      const phase = Math.random() * Math.PI * 2;
+      const tilt = (Math.random() - 0.5) * 22;
+      const floor = 28;
+      const ceiling = height - GROUND - 28;
+      for (let i = 0; i < count; i += 1) {
+        let y = midY;
+        if (style === 0) y = midY + Math.sin(phase + i * 0.7) * amp;
+        else if (style === 1) y = midY + tilt * (i / Math.max(1, count - 1) - 0.5) * 2;
+        else if (style === 2) y = midY + (i % 2 === 0 ? -amp : amp) * 0.65;
+        else y = midY + (Math.random() - 0.5) * amp * 1.6;
+        starBits.push({
+          x: startX + i * spacing,
+          y: Math.max(floor, Math.min(ceiling, y)),
+          spin: Math.random() * Math.PI,
+          twinkle: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+
+    function addScore(amount) {
+      score += amount;
+      scoreEl.textContent = String(score);
+    }
+
+    function eatStar(bit) {
+      const gain = power === "gold" ? STAR_VALUE * 2 : STAR_VALUE;
+      addScore(gain);
+      burst(bit.x, bit.y, 7, "#ffe9a8");
+      beep(820 + score * 8, 0.05, "triangle", 0.03);
     }
 
     function showBanner(text) {
@@ -547,7 +617,7 @@
     function resetRun() {
       birdY = height * 0.42; birdV = 0; birdVx = 0; angle = 0;
       birdX = Math.round(width * 0.28);
-      pipes = []; orbs = []; particles = []; rope = null; missRope = null;
+      pipes = []; orbs = []; starBits = []; particles = [];
       score = 0; shake = 0; invuln = 0; scroll = 0;
       power = null; powerLeft = 0; shield = false;
       setLevel(0, false); speed = level().speed;
@@ -555,7 +625,7 @@
       dashHoldTime = -1; dashUsedThisHold = false; dashBoost = 0;
       practiceSpawnIndex = 0;
       practiceTitle = practice ? "Training range" : level().name;
-      setControl(practice ? "tap" : selectedMode);
+      syncFlyHud();
       updatePowerHud(); updateMeta();
       const spacing = practice ? 360 : level().spacing;
       spawnPipe(width + 50);
@@ -574,13 +644,12 @@
       const spec = POWERS[orb.type];
       if (!spec) return;
       if (orb.type === "shield") shield = true;
-      if (orb.type === "mouse") rope = null;
       const hold = spec.duration * (practice ? 1.35 : 1);
       power = orb.type; powerMax = hold; powerLeft = hold;
       burst(orb.x, orb.y, 16, spec.color); beep(spec.freq, 0.12, "sine", 0.06);
       updatePowerHud();
       syncJumpButton();
-      syncWebRangeHud();
+      syncFlyHud();
     }
 
     function updatePowerHud() {
@@ -600,101 +669,118 @@
       if (power === "mouse") return 210;
       return 40 + levelIndex * 40;
     }
-    function hitRadius() { return (power === "tiny" ? BIRD_R * 0.68 : BIRD_R) * 0.72; }
+    function hitRadius() { return (power === "tiny" ? BIRD_R * 0.68 : BIRD_R) * (look.scale / 100) * 0.72; }
 
-    function pipeBoxes(pipe) {
-      return [
-        { x: pipe.x, y: -80, w: PIPE_W, h: pipe.top + 80 },
-        { x: pipe.x, y: pipe.top + pipe.gap, w: PIPE_W, h: height + 80 - (pipe.top + pipe.gap) },
-      ];
+    function bodyHue() {
+      return power ? birdHue() : look.hue;
     }
 
-    function rayBox(ox, oy, dx, dy, box, maxT) {
-      let tmin = 0.002, tmax = maxT;
-      if (Math.abs(dx) < 1e-8) {
-        if (ox < box.x || ox > box.x + box.w) return null;
-      } else {
-        let t1 = (box.x - ox) / dx, t2 = (box.x + box.w - ox) / dx;
-        if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
-        tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
-        if (tmax < tmin) return null;
+    function addShapePath(target, radius, shape) {
+      target.beginPath();
+      if (shape === "squircle") {
+        target.roundRect(-radius, -radius, radius * 2, radius * 2, radius * 0.58);
+        return;
       }
-      if (Math.abs(dy) < 1e-8) {
-        if (oy < box.y || oy > box.y + box.h) return null;
-      } else {
-        let t1 = (box.y - oy) / dy, t2 = (box.y + box.h - oy) / dy;
-        if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
-        tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
-        if (tmax < tmin) return null;
+      if (shape === "diamond") {
+        target.moveTo(0, -radius);
+        target.lineTo(radius, 0);
+        target.lineTo(0, radius);
+        target.lineTo(-radius, 0);
+        target.closePath();
+        return;
       }
-      if (tmin < 8 || tmin > maxT) return null;
-      return tmin;
+      if (shape === "hex") {
+        for (let i = 0; i < 6; i += 1) {
+          const a = -Math.PI / 2 + i * Math.PI / 3;
+          const x = Math.cos(a) * radius, y = Math.sin(a) * radius;
+          if (i === 0) target.moveTo(x, y); else target.lineTo(x, y);
+        }
+        target.closePath();
+        return;
+      }
+      if (shape === "petal") {
+        target.moveTo(0, -radius);
+        target.quadraticCurveTo(radius * 1.15, -radius * 0.2, radius * 0.2, radius);
+        target.quadraticCurveTo(0, radius * 0.55, -radius * 0.2, radius);
+        target.quadraticCurveTo(-radius * 1.15, -radius * 0.2, 0, -radius);
+        return;
+      }
+      target.arc(0, 0, radius, 0, Math.PI * 2);
     }
 
-    function closestOnBox(px, py, box) {
-      return {
-        x: Math.max(box.x, Math.min(box.x + box.w, px)),
-        y: Math.max(box.y, Math.min(box.y + box.h, py)),
-      };
-    }
-
-    function grabRope(cx, cy) {
-      let bestHit = null;
-      for (const pipe of pipes) {
-        for (const box of pipeBoxes(pipe)) {
-          const towardClick = closestOnBox(cx, cy, box);
-          const towardBird = closestOnBox(birdX, birdY, box);
-          for (const pt of [towardClick, towardBird]) {
-            const dBird = Math.hypot(pt.x - birdX, pt.y - birdY);
-            if (dBird < 24 || dBird > webRadius) continue;
-            const dClick = Math.hypot(pt.x - cx, pt.y - cy);
-            const score = dBird * 0.65 + dClick * 0.35;
-            if (!bestHit || score < bestHit.score) bestHit = { score, pipe, x: pt.x, y: pt.y, t: dBird };
-          }
+    function drawCharacter(target, style, size, pose) {
+      const hue = style.hue;
+      const squashX = pose.squashX || 1;
+      const squashY = pose.squashY || 1;
+      target.save();
+      target.rotate(pose.angle || 0);
+      target.scale(squashX, squashY);
+      const glowR = size * (1.8 + style.glow / 70);
+      const glow = target.createRadialGradient(0, 0, 0, 0, 0, glowR);
+      glow.addColorStop(0, `hsla(${style.glowHue}, 95%, 78%, ${0.15 + style.glow / 140})`);
+      glow.addColorStop(0.45, `hsla(${style.glowHue}, 90%, 60%, ${style.glow / 280})`);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      target.fillStyle = glow;
+      target.beginPath();
+      target.arc(0, 0, glowR, 0, Math.PI * 2);
+      target.fill();
+      addShapePath(target, size, style.shape);
+      target.fillStyle = `hsl(${hue}, ${style.sat}%, ${style.light}%)`;
+      target.fill();
+      if (style.outline > 0) {
+        target.strokeStyle = `hsl(${style.lineHue}, 70%, 42%)`;
+        target.lineWidth = style.outline;
+        target.stroke();
+      }
+      if (style.shine > 4) {
+        const shine = target.createRadialGradient(-size * 0.28, -size * 0.32, 0, -size * 0.28, -size * 0.32, size * 0.7);
+        shine.addColorStop(0, `rgba(255,255,255,${style.shine / 160})`);
+        shine.addColorStop(1, "rgba(255,255,255,0)");
+        target.fillStyle = shine;
+        addShapePath(target, size * 0.92, style.shape);
+        target.fill();
+      }
+      if (style.cheek > 4) {
+        target.fillStyle = `hsla(350, 80%, 62%, ${style.cheek / 140})`;
+        target.beginPath(); target.arc(-size * 0.42, size * 0.18, size * 0.16, 0, Math.PI * 2); target.fill();
+        target.beginPath(); target.arc(size * 0.42, size * 0.18, size * 0.16, 0, Math.PI * 2); target.fill();
+      }
+      const eyeR = size * 0.145 * (style.eyeSize / 100);
+      const eyeY = -size * 0.16;
+      target.fillStyle = `hsl(${style.eyeHue}, 28%, 12%)`;
+      if (style.eyes === 2) {
+        target.beginPath(); target.arc(-size * 0.22, eyeY, eyeR, 0, Math.PI * 2); target.fill();
+        target.beginPath(); target.arc(size * 0.28, eyeY, eyeR, 0, Math.PI * 2); target.fill();
+        target.fillStyle = "#f7fbff";
+        target.beginPath(); target.arc(-size * 0.18, eyeY - eyeR * 0.28, eyeR * 0.28, 0, Math.PI * 2); target.fill();
+        target.beginPath(); target.arc(size * 0.32, eyeY - eyeR * 0.28, eyeR * 0.28, 0, Math.PI * 2); target.fill();
+      } else {
+        target.beginPath(); target.arc(size * 0.38, eyeY, eyeR, 0, Math.PI * 2); target.fill();
+        target.fillStyle = "#f7fbff";
+        target.beginPath(); target.arc(size * 0.44, eyeY - eyeR * 0.28, eyeR * 0.3, 0, Math.PI * 2); target.fill();
+      }
+      if (style.sparkle > 0) {
+        target.fillStyle = "rgba(255,255,255,0.85)";
+        for (let i = 0; i < style.sparkle; i += 1) {
+          const a = i * 1.7 + hue * 0.02;
+          const r = size * (0.22 + (i % 3) * 0.14);
+          target.beginPath();
+          target.arc(Math.cos(a) * r, Math.sin(a) * r * 0.72, 1.1, 0, Math.PI * 2);
+          target.fill();
         }
       }
-      if (!bestHit) {
-        const mag = Math.hypot(cx - birdX, cy - birdY) || 1;
-        missRope = {
-          x: birdX + (cx - birdX) / mag * Math.min(90, webRadius * 0.45),
-          y: birdY + (cy - birdY) / mag * Math.min(90, webRadius * 0.45),
-          life: 0.16,
-        };
-        beep(170, 0.07, "square", 0.03);
-        return false;
-      }
-      rope = {
-        pipe: bestHit.pipe,
-        ox: bestHit.x - bestHit.pipe.x,
-        oy: bestHit.y,
-        len: Math.max(48, bestHit.t * 0.92),
-      };
-      beep(360, 0.08, "sine", 0.05);
-      return true;
+      target.restore();
     }
 
-    function ropeAnchor() {
-      if (!rope || !rope.pipe) return null;
-      if (!pipes.includes(rope.pipe)) return null;
-      return { x: rope.pipe.x + rope.ox, y: rope.oy };
-    }
-
-    function applyRope(dt) {
-      const a = ropeAnchor();
-      if (!a) { rope = null; return; }
-      let dx = birdX - a.x, dy = birdY - a.y;
-      let dist = Math.hypot(dx, dy) || 0.0001;
-      const nx = dx / dist, ny = dy / dist;
-      if (dist > rope.len) {
-        birdX = a.x + nx * rope.len;
-        birdY = a.y + ny * rope.len;
-        const vr = birdVx * nx + birdV * ny;
-        if (vr > 0) {
-          birdVx -= vr * nx;
-          birdV -= vr * ny;
-        }
-      }
-      angle = Math.atan2(birdVx, 380) + Math.max(-0.5, Math.min(0.8, birdV / 900));
+    function paintBoardOrb(canvasNode, savedLook) {
+      const style = clampLook(savedLook);
+      const nodeCtx = canvasNode.getContext("2d");
+      const w = canvasNode.width, h = canvasNode.height;
+      nodeCtx.clearRect(0, 0, w, h);
+      nodeCtx.save();
+      nodeCtx.translate(w / 2, h / 2);
+      drawCharacter(nodeCtx, style, 9.5 * (style.scale / 100), { angle: 0, squashX: 1, squashY: 1 });
+      nodeCtx.restore();
     }
 
     function fireDash() {
@@ -716,6 +802,10 @@
     }
 
     function startGame(asPractice) {
+      if (studioOpen) {
+        studioOpen = false;
+        studioPanel.classList.add("hidden");
+      }
       practice = !!asPractice;
       startPanel.classList.add("hidden");
       overPanel.classList.add("hidden");
@@ -728,21 +818,19 @@
         birdV = 0; birdVx = 0;
       }
       syncJumpButton();
-      syncWebRangeHud();
+      syncFlyHud();
     }
 
     function leavePractice() {
       practice = false;
-      rope = null;
       leaveBtn.classList.add("hidden");
       overPanel.classList.add("hidden");
       startPanel.classList.remove("hidden");
       mode = "ready";
-      setControl(selectedMode);
       updateMeta();
       renderBoard(startBoard);
       syncJumpButton();
-      syncWebRangeHud();
+      syncFlyHud();
     }
 
     function flap() {
@@ -757,7 +845,6 @@
       if (invuln > 0) return;
       invuln = 0.9;
       shake = 6;
-      rope = null;
       dashBoost = 0;
       birdV = FLAP * 0.58;
       birdVx *= 0.25;
@@ -787,7 +874,7 @@
         bouncePractice();
         return;
       }
-      mode = "over"; shake = 10; rope = null;
+      mode = "over"; shake = 10;
       burst(birdX, birdY, 28, "#ff8aa8"); beep(140, 0.22, "sawtooth", 0.06);
       if (score > best) { best = score; localStorage.setItem("flux-bird-best", String(best)); }
       updateMeta();
@@ -798,7 +885,7 @@
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
       syncJumpButton();
-      syncWebRangeHud();
+      syncFlyHud();
     }
 
     function update(dt) {
@@ -820,15 +907,14 @@
             if (wasMouse) {
               pointerHeld = false;
               syncJumpButton();
-              syncWebRangeHud();
+              syncFlyHud();
             }
           } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
         }
         invuln = Math.max(0, invuln - dt);
         if (pointerHeld && dashHoldTime >= 0) {
           dashHoldTime += dt;
-          const webBusy = controlMode === "swing" && rope;
-          if (power === "dash" && !dashUsedThisHold && !webBusy && dashHoldTime >= DASH_HOLD) {
+          if (power === "dash" && !dashUsedThisHold && dashHoldTime >= DASH_HOLD) {
             fireDash();
             dashUsedThisHold = true;
           }
@@ -855,14 +941,6 @@
             birdX = Math.max(width * 0.12, Math.min(width * 0.55, birdX));
           }
           angle = Math.max(-0.55, Math.min(0.55, birdV / 720));
-        } else if (controlMode === "swing") {
-          birdV = Math.min(MAX_FALL, birdV + gravity * dt);
-          birdVx *= dashBoost > 0 ? 0.995 : 0.998;
-          birdX += birdVx * dt;
-          birdY += birdV * dt;
-          if (rope) applyRope(dt);
-          else angle = Math.max(-0.6, Math.min(1.1, birdV / 900));
-          birdX = Math.max(18, Math.min(width - 18, birdX));
         } else {
           const restX = Math.round(width * 0.28);
           if (dashBoost <= 0) {
@@ -877,7 +955,7 @@
         }
         speed = practice
           ? 168
-          : (L.speed + Math.max(0, score - L.min) * 3.5) * (controlMode === "swing" ? 0.86 : 1);
+          : L.speed + Math.max(0, score - L.min) * 3.5;
         scroll += speed * dt;
 
         if (!practice) {
@@ -889,8 +967,6 @@
           pipe.x -= speed * dt;
           if (practice && !pipe.applied && pipe.x < width * 0.82) {
             pipe.applied = true;
-            if (pipe.lessonMode) setControl(pipe.lessonMode, false);
-            else setControl("tap", false);
             if (pipe.title) {
               practiceTitle = pipe.title;
               mapLine.textContent = pipe.title;
@@ -899,17 +975,15 @@
           }
           if (!pipe.passed && pipe.x + PIPE_W < birdX) {
             pipe.passed = true;
-            score += power === "gold" ? 2 : 1;
-            scoreEl.textContent = String(score);
+            addScore(power === "gold" ? 2 : 1);
             burst(birdX + 16, birdY, 9, power === "gold" ? "#ffe08a" : "#d7e7ff");
             beep(760 + score * 10, 0.08, "triangle", 0.045);
           }
         }
         pipes = pipes.filter((pipe) => pipe.x > -PIPE_W - 8);
-        if (rope && !pipes.includes(rope.pipe)) rope = null;
         while (pipes.length < 3) {
           const lastPipe = pipes[pipes.length - 1];
-          const spacing = practice ? 360 : L.spacing + (controlMode === "swing" ? WEB_SPACING : 0);
+          const spacing = practice ? 360 : L.spacing;
           spawnPipe((lastPipe ? lastPipe.x : width) + spacing);
         }
         for (const orb of orbs) orb.x -= speed * dt;
@@ -917,6 +991,14 @@
         for (let i = orbs.length - 1; i >= 0; i -= 1) {
           if (Math.hypot(orbs[i].x - birdX, orbs[i].y - birdY) < hitRadius() + ORB_R + 6) {
             collect(orbs[i]); orbs.splice(i, 1);
+          }
+        }
+        for (const bit of starBits) bit.x -= speed * dt;
+        starBits = starBits.filter((bit) => bit.x > -20);
+        for (let i = starBits.length - 1; i >= 0; i -= 1) {
+          if (Math.hypot(starBits[i].x - birdX, starBits[i].y - birdY) < hitRadius() + STAR_R + 5) {
+            eatStar(starBits[i]);
+            starBits.splice(i, 1);
           }
         }
         const radius = hitRadius();
@@ -929,10 +1011,6 @@
       }
       for (const p of particles) { p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 380 * dt; }
       particles = particles.filter((p) => p.age < p.life);
-      if (missRope) {
-        missRope.life -= dt;
-        if (missRope.life <= 0) missRope = null;
-      }
       shake *= 0.84;
     }
 
@@ -1003,43 +1081,26 @@
         ctx.beginPath(); ctx.roundRect(pipe.x, -24, PIPE_W, pipe.top + 24, 14); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.roundRect(pipe.x, pipe.top + pipe.gap, PIPE_W, height, 14); ctx.fill(); ctx.stroke();
       }
-      if (controlMode === "swing" && !usingMouse() && (mode === "play" || mode === "ready")) {
-        const readyWall = wallInWebRange();
+      for (const bit of starBits) {
+        const twinkle = 0.72 + Math.sin(performance.now() / 160 + bit.twinkle) * 0.28;
+        const rot = bit.spin + performance.now() / 700;
+        ctx.save();
+        ctx.translate(bit.x, bit.y);
+        ctx.rotate(rot);
+        ctx.fillStyle = `rgba(255, 233, 168, ${twinkle})`;
         ctx.beginPath();
-        ctx.arc(birdX, birdY, webRadius, 0, Math.PI * 2);
-        ctx.fillStyle = readyWall ? "rgba(255,176,122,0.14)" : "rgba(255,176,122,0.05)";
-        ctx.fill();
-        ctx.setLineDash([7, 7]);
-        ctx.lineWidth = 2.2;
-        ctx.strokeStyle = readyWall ? "rgba(255,176,122,0.9)" : "rgba(255,176,122,0.35)";
-        ctx.stroke();
-        ctx.setLineDash([]);
-        if (readyWall) {
-          ctx.fillStyle = "#ffb07a";
-          ctx.beginPath();
-          ctx.arc(readyWall.x, readyWall.y, 5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(255,236,210,0.85)";
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(birdX, birdY);
-          ctx.lineTo(readyWall.x, readyWall.y);
-          ctx.stroke();
+        for (let p = 0; p < 5; p += 1) {
+          const a = -Math.PI / 2 + p * Math.PI * 2 / 5;
+          const outer = STAR_R * twinkle;
+          const inner = STAR_R * 0.42;
+          const xo = Math.cos(a) * outer, yo = Math.sin(a) * outer;
+          const xi = Math.cos(a + Math.PI / 5) * inner, yi = Math.sin(a + Math.PI / 5) * inner;
+          if (p === 0) ctx.moveTo(xo, yo); else ctx.lineTo(xo, yo);
+          ctx.lineTo(xi, yi);
         }
-      }
-      const hook = ropeAnchor();
-      if (hook) {
-        ctx.strokeStyle = "rgba(236, 246, 255, 0.9)";
-        ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(birdX, birdY); ctx.lineTo(hook.x, hook.y); ctx.stroke();
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath(); ctx.arc(hook.x, hook.y, 4.2, 0, Math.PI * 2); ctx.fill();
-      } else if (missRope) {
-        ctx.globalAlpha = Math.max(0, missRope.life / 0.16);
-        ctx.strokeStyle = "rgba(255, 160, 170, 0.85)";
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(birdX, birdY); ctx.lineTo(missRope.x, missRope.y); ctx.stroke();
-        ctx.globalAlpha = 1;
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
       for (const orb of orbs) {
         const pulse = 1 + Math.sin(performance.now() / 140 + orb.x * 0.05) * 0.1;
@@ -1070,28 +1131,114 @@
       }
       ctx.globalAlpha = 1;
 
-      const hue = birdHue();
-      const size = power === "tiny" ? BIRD_R * 0.68 : BIRD_R;
-      ctx.save(); ctx.translate(birdX, birdY); ctx.rotate(angle);
+      const size = (power === "tiny" ? BIRD_R * 0.68 : BIRD_R) * (look.scale / 100);
+      const squash = Math.max(0.78, Math.min(1.18, 1 - birdV / 2400));
+      ctx.save(); ctx.translate(birdX, birdY);
       ctx.globalAlpha = invuln > 0 && Math.floor(invuln * 12) % 2 === 0 ? 0.4 : 1;
       if (shield) {
         ctx.strokeStyle = "rgba(255,138,200,0.9)"; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(0, 0, size + 10 + Math.sin(performance.now() / 120) * 2, 0, Math.PI * 2); ctx.stroke();
       }
-      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 36);
-      glow.addColorStop(0, `hsla(${hue}, 95%, 78%, 1)`);
-      glow.addColorStop(0.45, `hsla(${hue}, 90%, 60%, 0.4)`);
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, 36, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `hsl(${hue}, 90%, 72%)`; ctx.beginPath(); ctx.arc(0, 0, size, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#071018"; ctx.beginPath(); ctx.arc(size * 0.38, -size * 0.18, 3.2, 0, Math.PI * 2); ctx.fill();
+      drawCharacter(ctx, { ...look, hue: bodyHue(), glowHue: power ? bodyHue() : look.glowHue }, size, {
+        angle,
+        squashX: 2 - squash,
+        squashY: squash,
+      });
       ctx.restore();
       ctx.restore();
     }
 
+    function syncLookControls() {
+      LOOK_FIELDS.forEach(([id, key]) => {
+        const input = document.getElementById(id);
+        const label = document.getElementById(`${id}Val`);
+        if (input) input.value = String(look[key]);
+        if (label) label.textContent = String(look[key]);
+      });
+      document.getElementById("lookShape").value = look.shape;
+    }
+
+    function applyLookInput(id, key) {
+      const input = document.getElementById(id);
+      look[key] = key === "eyes" || key === "outline" || key === "sparkle"
+        ? Math.round(Number(input.value))
+        : Number(input.value);
+      const label = document.getElementById(`${id}Val`);
+      if (label) label.textContent = String(look[key]);
+      persistLook();
+    }
+
+    function studioJump() {
+      studioPose.v = -420;
+    }
+
+    function studioSqueezePulse() {
+      studioPose.squeeze = 0.58;
+    }
+
+    function resetStudioPose() {
+      studioPose.angle = 0;
+      studioPose.y = 0;
+      studioPose.v = 0;
+      studioPose.squeeze = 1;
+      studioPose.spinning = false;
+    }
+
+    function openStudio() {
+      studioOpen = true;
+      startPanel.classList.add("hidden");
+      studioPanel.classList.remove("hidden");
+      syncLookControls();
+      resetStudioPose();
+    }
+
+    function closeStudio() {
+      studioOpen = false;
+      persistLook();
+      studioPanel.classList.add("hidden");
+      startPanel.classList.remove("hidden");
+      renderBoard(startBoard);
+    }
+
+    function updateStudio(dt) {
+      studioPose.v = Math.min(980, studioPose.v + 1800 * dt);
+      studioPose.y += studioPose.v * dt;
+      if (studioPose.y > 0) {
+        studioPose.y = 0;
+        studioPose.v *= -0.28;
+        if (Math.abs(studioPose.v) < 40) studioPose.v = 0;
+      }
+      studioPose.squeeze += (1 - studioPose.squeeze) * Math.min(1, 8 * dt);
+      if (studioPose.spinning || look.spin > 0) {
+        studioPose.angle += (studioPose.spinning ? 2.8 : look.spin / 18) * dt;
+      }
+    }
+
+    function drawStudio() {
+      const w = studioView.width, h = studioView.height;
+      studioCtx.clearRect(0, 0, w, h);
+      studioCtx.fillStyle = "rgba(255,255,255,0.04)";
+      for (let x = 12; x < w; x += 22) studioCtx.fillRect(x, h * 0.72, 10, 2);
+      studioCtx.save();
+      studioCtx.translate(w / 2, h * 0.48 + studioPose.y * 0.12);
+      const squeeze = studioPose.squeeze;
+      const airborne = studioPose.y < -4;
+      drawCharacter(studioCtx, look, 36 * (look.scale / 100), {
+        angle: studioPose.angle,
+        squashX: airborne ? 0.88 : 2 - squeeze,
+        squashY: airborne ? 1.16 : squeeze,
+      });
+      studioCtx.restore();
+    }
+
     function loop(now) {
       const dt = Math.min(0.033, (now - last) / 1000 || 0.016);
-      last = now; update(dt); draw(); requestAnimationFrame(loop);
+      last = now; update(dt); draw();
+      if (studioOpen) {
+        updateStudio(dt);
+        drawStudio();
+      }
+      requestAnimationFrame(loop);
     }
 
     window.addEventListener("resize", resize);
@@ -1100,7 +1247,7 @@
       mouseX = event.clientX;
     });
     window.addEventListener("pointerdown", (event) => {
-      if (event.target.closest("button, input")) return;
+      if (studioOpen || event.target.closest("button, input, select, #studio")) return;
       event.preventDefault();
       mouseY = event.clientY;
       mouseX = event.clientX;
@@ -1111,57 +1258,35 @@
         if (mode === "ready" || mode === "over") startGame();
         return;
       }
-      if (controlMode === "swing") {
-        if (mode === "ready" || mode === "over") startGame();
-        if (mode === "play") {
-          const hooked = grabRope(event.clientX, event.clientY);
-          if (!hooked) flap();
-        }
-        return;
-      }
       flap();
     });
     window.addEventListener("pointerup", () => {
       pointerHeld = false;
       dashHoldTime = -1;
       dashUsedThisHold = false;
-      if (controlMode === "swing") rope = null;
     });
     window.addEventListener("pointercancel", () => {
       pointerHeld = false;
       dashHoldTime = -1;
       dashUsedThisHold = false;
-      if (controlMode === "swing") rope = null;
     });
     window.addEventListener("keydown", (event) => {
       if (event.code === "Escape") {
         event.preventDefault();
+        if (studioOpen) { closeStudio(); return; }
         if (practice && mode === "play") leavePractice();
         return;
       }
       if (event.code !== "Space" && event.code !== "Enter") return;
       event.preventDefault();
       if (event.repeat) return;
+      if (studioOpen) { studioJump(); return; }
       if (!usingMouse()) flap();
     });
     jumpBtn.addEventListener("click", (event) => { event.stopPropagation(); flap(); });
-    function onWebRangeInput(event) {
-      event.stopPropagation();
-      setWebRadius(event.target.value);
-    }
-    webRangeMenu.addEventListener("input", onWebRangeInput);
-    webRangePlay.addEventListener("input", onWebRangeInput);
-    webRangeMenu.addEventListener("pointerdown", (event) => event.stopPropagation());
-    webRangePlay.addEventListener("pointerdown", (event) => event.stopPropagation());
     leaveBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       leavePractice();
-    });
-    document.getElementById("modeChoices").addEventListener("click", (event) => {
-      const btn = event.target.closest(".choice");
-      if (!btn) return;
-      event.stopPropagation();
-      pickMode(btn.dataset.mode);
     });
     document.getElementById("playBtn").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1179,7 +1304,80 @@
     document.getElementById("menuBtn").addEventListener("click", (event) => {
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");
       practice = false; leaveBtn.classList.add("hidden");
-      mode = "ready"; renderBoard(startBoard); syncJumpButton(); syncWebRangeHud(); updateMeta();
+      mode = "ready"; renderBoard(startBoard); syncJumpButton(); syncFlyHud(); updateMeta();
+    });
+    document.getElementById("studioBtn").addEventListener("click", (event) => {
+      event.stopPropagation();
+      openStudio();
+    });
+    document.getElementById("studioDone").addEventListener("click", (event) => {
+      event.stopPropagation();
+      closeStudio();
+    });
+    document.getElementById("studioResetLook").addEventListener("click", (event) => {
+      event.stopPropagation();
+      look = { ...DEFAULT_LOOK };
+      persistLook();
+      syncLookControls();
+    });
+    document.getElementById("studioJump").addEventListener("click", (event) => {
+      event.stopPropagation();
+      studioJump();
+    });
+    document.getElementById("studioSqueeze").addEventListener("click", (event) => {
+      event.stopPropagation();
+      studioSqueezePulse();
+    });
+    document.getElementById("studioSpin").addEventListener("click", (event) => {
+      event.stopPropagation();
+      studioPose.spinning = !studioPose.spinning;
+    });
+    document.getElementById("studioResetPose").addEventListener("click", (event) => {
+      event.stopPropagation();
+      resetStudioPose();
+    });
+    document.querySelector(".presets").addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-preset]");
+      if (!btn) return;
+      event.stopPropagation();
+      look = clampLook(LOOK_PRESETS[btn.dataset.preset]);
+      persistLook();
+      syncLookControls();
+    });
+    LOOK_FIELDS.forEach(([id, key]) => {
+      const input = document.getElementById(id);
+      input.addEventListener("input", () => applyLookInput(id, key));
+      input.addEventListener("pointerdown", (event) => event.stopPropagation());
+    });
+    document.getElementById("lookShape").addEventListener("change", (event) => {
+      look.shape = event.target.value;
+      persistLook();
+    });
+    studioView.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      studioPose.drag = true;
+      studioPose.moved = false;
+      studioPose.lastX = event.clientX;
+      studioPose.lastY = event.clientY;
+      studioView.classList.add("grabbing");
+      studioView.setPointerCapture(event.pointerId);
+    });
+    studioView.addEventListener("pointermove", (event) => {
+      if (!studioPose.drag) return;
+      const dx = event.clientX - studioPose.lastX;
+      const dy = event.clientY - studioPose.lastY;
+      if (Math.hypot(dx, dy) > 4) studioPose.moved = true;
+      studioPose.angle += dx * 0.02;
+      studioPose.squeeze = Math.max(0.52, Math.min(1.35, studioPose.squeeze - dy * 0.012));
+      studioPose.lastX = event.clientX;
+      studioPose.lastY = event.clientY;
+    });
+    studioView.addEventListener("pointerup", () => {
+      if (!studioPose.drag) return;
+      studioPose.drag = false;
+      studioView.classList.remove("grabbing");
+      if (!studioPose.moved) studioJump();
     });
     document.getElementById("saveBtn").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1189,7 +1387,7 @@
       saveScore(name, pendingScore); pendingScore = 0; saveRow.classList.add("hidden");
     });
 
-    resize(); renderBoard(startBoard); updateMeta(); pickMode(selectedMode); syncWebRangeControls(); requestAnimationFrame(loop);
+    resize(); renderBoard(startBoard); updateMeta(); syncFlyHud(); syncLookControls(); requestAnimationFrame(loop);
   </script>
 </body>
 </html>

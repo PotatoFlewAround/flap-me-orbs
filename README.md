@@ -1,48 +1,56 @@
 # Flap me Orbs
 
-A vibe-coded desktop game. Fly through pipes, grab orbs, and climb through changing skies.
+A tribute to Dong Nguyen's Flappy Bird. Thanks, Dong.
 
-Inspired by **Flappy Bird**, developed by **Dong Nguyen**.
+Steer your hero through pipes and star trails. Jump to fly. Rare power-up orbs change how you move. The code is yours to use, fork, and remix. GG!
 
-## Play
+## How to play
 
-Pick a control mode, then **Play** or **Practice**.
+Click, tap, or press Space to jump.
 
-**Modes**
+- **Play** — score through six skies, from Dusk Vale to Event Horizon
+- **Practice** — a slow looping course. Crashes bounce you back. Leave with **Menu** or **Esc**
+- **Modify your hero** — change shape, colors, glow, and pose. That look is saved with your leaderboard score
 
-- **Jump** — tap / click / Space to flap
-- **Web** — keep your jump, and hold click to sling a wall inside your reach circle. Set **Web reach** on the menu or during play.
+Scores stay on this machine.
 
-**Orbs**
+### Pickups
 
-- **White** — mouse-drag for a few seconds (hold and drag; release to fall)
-- **Pink** — shield (survives one hit)
-- **Cyan** — drift (slower fall)
-- **Green** — tiny (smaller hitbox)
-- **Gold** — double score
-- **Orange** — dash (hold left click to burst toward the cursor)
+Power-up orbs are rare and random. The legend sits in the bottom-left corner.
 
-Practice is a slow looping course that starts in Jump. Web turns on for its own station. Crashes bounce you back. Leave with **Menu** or **Esc**. Scores stay local to this machine.
+| Orb | Effect |
+| --- | --- |
+| Stars | Trails between pipes. +1 each (+2 with gold) |
+| White | Mouse-drag for a few seconds. Hold and drag; release to fall |
+| Pink | Shield. Survive one hit |
+| Cyan | Drift. Slower fall |
+| Green | Tiny. Smaller hitbox |
+| Gold | Double score |
+| Orange | Dash. Hold left click to burst toward the cursor |
 
-## Run locally
+## Run the game
+
+You do not need Node or a browser. Double-click:
+
+`dist\win-unpacked\Flap me Orbs.exe`
+
+If Windows SmartScreen warns you, choose **More info**, then **Run anyway**.
+
+There is also a packaged build in `dist\Flap me Orbs 1.0.0.exe`.
+
+## Build from source
 
 ```
-cd C:\Users\tinor\Desktop\flap-me-orbs
 npm start
 ```
 
-## Windows builds
-
-- Portable: `dist\Flap me Orbs 1.0.0.exe`
-- Installer: `dist\Flap me Orbs 1.0.0.exe`
-- Unpacked folder Steam can launch: `dist\win-unpacked\Flap me Orbs.exe`
-
-After editing the game, copy `C:\Users\tinor\Desktop\flap-me-orbs.html` to `game.html`, then:
+Edit `game.html`, close the running game, then:
 
 ```
 npx electron-builder --win
 ```
 
-Close the running game first or the rebuild cannot overwrite `dist\win-unpacked`.
+The rebuild cannot overwrite `dist\win-unpacked` while the exe is open.
 
-Steam: upload `win-unpacked` as a depot and set the launch executable to `Flap me Orbs.exe`.
+For Steam, upload `dist\win-unpacked` as a depot and set the launch executable to `Flap me Orbs.exe`.
+
