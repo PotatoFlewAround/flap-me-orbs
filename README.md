@@ -28,6 +28,14 @@ Power-up orbs are rare and random. The legend sits in the bottom-left corner.
 | Gold | Double score |
 | Orange | Dash. Hold left click to burst toward the cursor |
 
+## Play online
+
+Open the GitHub Pages link:
+
+https://potatoflewaround.github.io/flap-me-orbs/
+
+Anyone with that URL can play in a browser. Scores stay in that visitor’s browser.
+
 ## Run the game
 
 You do not need Node or a browser. Double-click:
