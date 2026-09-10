@@ -288,6 +288,7 @@
     const STAR_TRAIL_CHANCE = 0.8;
     const STAR_VALUE = 1;
     const BANNER_PLANE_LINES = ["Hello Carol!", "from Dao Ming Si"];
+    const BANNER_PLANE_CODE = "67";
     const BANNER_PLANE_CYCLE_MS = 48000;
     const BANNER_PLANE_FLIGHT_MS = 20000;
     const BANNER_PLANE_ALTITUDE = 0.16;
@@ -410,6 +411,9 @@
     let look = loadLook();
     let studioOpen = false;
     let studioPose = { angle: 0, y: 0, v: 0, squeeze: 1, spinning: false, drag: false, lastX: 0, lastY: 0, moved: false };
+    let bannerPlaneOn = false;
+    let bannerPlaneStart = 0;
+    let bannerCode = "";
 
     function usingMouse() {
       return power === "mouse";
@@ -1167,9 +1171,26 @@
         + Math.sin(now * 0.011 + travel * 7.6) * 2.4 * travel;
     }
 
+    function noteBannerCode(event) {
+      if (event.repeat) return;
+      if (event.target.closest("input, textarea, select")) return;
+      const digit = event.key;
+      if (digit.length !== 1 || digit < "0" || digit > "9") {
+        if (digit.length === 1) bannerCode = "";
+        return;
+      }
+      bannerCode = (bannerCode + digit).slice(-BANNER_PLANE_CODE.length);
+      if (bannerCode === BANNER_PLANE_CODE) {
+        bannerPlaneOn = true;
+        bannerPlaneStart = performance.now();
+        bannerCode = "";
+      }
+    }
+
     function drawBannerPlane() {
+      if (!bannerPlaneOn) return;
       const now = performance.now();
-      const phase = now % BANNER_PLANE_CYCLE_MS;
+      const phase = (now - bannerPlaneStart) % BANNER_PLANE_CYCLE_MS;
       if (phase > BANNER_PLANE_FLIGHT_MS) return;
 
       const scale = Math.max(0.72, Math.min(1, width / 560));
@@ -1987,6 +2008,7 @@
       dashUsedThisHold = false;
     });
     window.addEventListener("keydown", (event) => {
+      noteBannerCode(event);
       if (event.code === "Escape") {
         event.preventDefault();
         if (studioOpen) { closeStudio(); return; }
