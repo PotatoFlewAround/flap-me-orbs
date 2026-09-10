@@ -504,6 +504,7 @@
     }
 
     function paintBoard(target, rows) {
+      if (!target) return;
       if (!rows.length) {
         target.innerHTML = "<li>No scores yet</li>";
         return;
@@ -516,10 +517,28 @@
       });
     }
 
-    async function renderBoard(target) {
-      target.innerHTML = "<li>Loading…</li>";
-      const rows = await fetchBoard();
-      paintBoard(target, rows);
+    function applyBoard(rows) {
+      remoteBoard = rows;
+      cacheLocalBoard(rows);
+      paintBoard(startBoard, rows);
+      paintBoard(overBoard, rows);
+    }
+
+    function renderBoard(target) {
+      paintBoard(target, remoteBoard);
+    }
+
+    function subscribeBoard() {
+      startBoard.innerHTML = "<li>Loading…</li>";
+      overBoard.innerHTML = "<li>Loading…</li>";
+      if (!scoreDb) {
+        fetchBoard().then(applyBoard);
+        return;
+      }
+      scoreDb.collection("scores").orderBy("score", "desc").limit(10).onSnapshot(
+        (snap) => applyBoard(snap.docs.map((doc) => doc.data())),
+        () => fetchBoard().then(applyBoard)
+      );
     }
 
     function qualify(value) {
@@ -536,10 +555,11 @@
       };
       if (scoreDb) {
         try { await scoreDb.collection("scores").add(row); }
-        catch { /* keep going and refresh */ }
+        catch { /* listener will keep the last good board */ }
+        return;
       }
-      await renderBoard(startBoard);
-      await renderBoard(overBoard);
+      remoteBoard = [...remoteBoard, row].sort((a, b) => b.score - a.score).slice(0, 10);
+      applyBoard(remoteBoard);
     }
 
     function beep(freq, duration, type, gain) {
@@ -941,11 +961,9 @@
       if (score > best) { best = score; localStorage.setItem("flux-bird-best", String(best)); }
       updateMeta();
       overText.textContent = `Score ${score} · ${level().name}`;
-      fetchBoard().then(() => {
-        pendingScore = qualify(score) ? score : 0;
-        saveRow.classList.toggle("hidden", !pendingScore);
-        paintBoard(overBoard, remoteBoard);
-      });
+      pendingScore = qualify(score) ? score : 0;
+      saveRow.classList.toggle("hidden", !pendingScore);
+      paintBoard(overBoard, remoteBoard);
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
       syncJumpButton();
@@ -1915,7 +1933,8 @@
     });
 
     initScoreDb();
-    resize(); renderBoard(startBoard); updateMeta(); syncFlyHud(); syncLookControls(); requestAnimationFrame(loop);
+    subscribeBoard();
+    resize(); updateMeta(); syncFlyHud(); syncLookControls(); requestAnimationFrame(loop);
   </script>
 </body>
 </html>

@@ -36,7 +36,7 @@ Open the GitHub Pages link:
 
 https://potatoflewaround.github.io/flap-me-orbs/
 
-Anyone with that URL can play in a browser. The leaderboard is shared.
+Anyone with that URL can play in a browser. The leaderboard updates live for every open page.
 
 ## Run the game
 
