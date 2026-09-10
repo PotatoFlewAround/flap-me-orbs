@@ -47,6 +47,7 @@
     .bar > span { display: block; height: 100%; width: 0%; background: currentColor; }
     .legend {
       position: absolute; left: 20px; bottom: 28px;
+      pointer-events: none;
       min-width: 148px; padding: 10px 12px 8px;
       border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
       background: rgba(8,10,18,0.55); text-align: left;
@@ -95,13 +96,6 @@
       background: var(--accent); color: #041018; font: inherit; font-weight: 700; cursor: pointer;
     }
     .ghost { margin-top: 8px; background: rgba(255,255,255,0.08); color: var(--ink); }
-    .jump {
-      position: absolute; right: 20px; bottom: 28px; z-index: 3;
-      width: 96px; height: 96px; border: 0; border-radius: 50%;
-      background: var(--accent); color: #041018; font: inherit; font-weight: 800;
-      letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
-      pointer-events: auto; box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-    }
     .leave {
       position: absolute; left: 20px; top: 16px; z-index: 3;
       width: auto; padding: 8px 14px; border: 0; border-radius: 12px;
@@ -110,11 +104,12 @@
       text-transform: uppercase; cursor: pointer; pointer-events: auto;
     }
     .practice-powers {
-      position: absolute; left: 20px; bottom: 28px; z-index: 3;
-      width: min(220px, calc(100vw - 148px)); padding: 10px 12px 8px;
+      position: fixed; left: 20px; bottom: 28px; z-index: 4;
+      width: min(240px, calc(100vw - 40px)); padding: 10px 12px 8px;
       border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
-      background: rgba(8,10,18,0.55); text-align: left; pointer-events: auto;
+      background: rgba(8,10,18,0.72); text-align: left; pointer-events: auto;
     }
+    .practice-powers, .practice-powers * { pointer-events: auto; }
     .practice-powers h2 {
       margin-bottom: 6px; color: var(--ink); font-size: 0.68rem;
       letter-spacing: 0.14em; text-transform: uppercase;
@@ -259,20 +254,7 @@
       <button id="studioDone" type="button">Done</button>
       <button id="studioResetLook" class="ghost" type="button">Reset hero</button>
     </section>
-    <div id="practicePowers" class="practice-powers hidden" aria-label="Practice power">
-      <h2>Hero power</h2>
-      <div class="practice-power-grid">
-        <button type="button" data-power="" class="active">None</button>
-        <button type="button" data-power="mouse" style="color:#f4f7ff">Mouse</button>
-        <button type="button" data-power="shield" style="color:#ff8ac8">Shield</button>
-        <button type="button" data-power="drift" style="color:#7ee7ff">Drift</button>
-        <button type="button" data-power="tiny" style="color:#9dffb0">Tiny</button>
-        <button type="button" data-power="gold" style="color:#ffe08a">Double</button>
-        <button type="button" data-power="dash" style="color:#ff7a4a">Dash</button>
-      </div>
-    </div>
     <button id="leaveBtn" class="leave hidden" type="button">Menu</button>
-    <button id="jumpBtn" class="jump hidden" type="button">Jump</button>
     <section id="over" class="panel hidden">
       <h1>Crash</h1>
       <p id="overText">Score 0</p>
@@ -284,6 +266,18 @@
       <button id="retryBtn" type="button">Play again</button>
       <button id="menuBtn" class="ghost" type="button">Menu</button>
     </section>
+  </div>
+  <div id="practicePowers" class="practice-powers hidden" aria-label="Practice power">
+    <h2>Hero power</h2>
+    <div class="practice-power-grid">
+      <button type="button" data-power="">None</button>
+      <button type="button" data-power="mouse" style="color:#f4f7ff">Mouse</button>
+      <button type="button" data-power="shield" style="color:#ff8ac8">Shield</button>
+      <button type="button" data-power="drift" style="color:#7ee7ff">Drift</button>
+      <button type="button" data-power="tiny" style="color:#9dffb0">Tiny</button>
+      <button type="button" data-power="gold" style="color:#ffe08a">Double</button>
+      <button type="button" data-power="dash" style="color:#ff7a4a">Dash</button>
+    </div>
   </div>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
@@ -305,7 +299,6 @@
     const playerName = document.getElementById("playerName");
     const startBoard = document.getElementById("startBoard");
     const overBoard = document.getElementById("overBoard");
-    const jumpBtn = document.getElementById("jumpBtn");
     const leaveBtn = document.getElementById("leaveBtn");
     const controlLine = document.getElementById("controlLine");
     const legend = document.getElementById("legend");
@@ -459,10 +452,6 @@
       controlLine.innerHTML = usingMouse() ? "Fly <strong>Mouse</strong>" : "Fly <strong>Jump</strong>";
     }
 
-    function syncJumpButton() {
-      jumpBtn.classList.toggle("hidden", !(mode === "play" && !usingMouse()));
-    }
-
     function syncPracticePowerUi() {
       const inPractice = practice && mode === "play";
       practicePowers.classList.toggle("hidden", !inPractice);
@@ -489,7 +478,6 @@
       }
       if (wasMouse && next !== "mouse") pointerHeld = false;
       updatePowerHud();
-      syncJumpButton();
       syncFlyHud();
       syncPracticePowerUi();
       updateMeta();
@@ -798,6 +786,7 @@
     }
 
     function collect(orb) {
+      if (practice) return;
       const spec = POWERS[orb.type];
       if (!spec) return;
       if (orb.type === "shield") shield = true;
@@ -805,7 +794,6 @@
       power = orb.type; powerMax = hold; powerLeft = hold;
       burst(orb.x, orb.y, 16, spec.color); beep(spec.freq, 0.12, "sine", 0.06);
       updatePowerHud();
-      syncJumpButton();
       syncFlyHud();
     }
 
@@ -983,7 +971,6 @@
         birdY = Math.max(40, Math.min(height - GROUND - 40, mouseY || height * 0.42));
         birdV = 0; birdVx = 0;
       }
-      syncJumpButton();
       syncFlyHud();
     }
 
@@ -997,7 +984,6 @@
       updatePowerHud();
       updateMeta();
       renderBoard(startBoard);
-      syncJumpButton();
       syncFlyHud();
       syncPracticePowerUi();
     }
@@ -1056,7 +1042,6 @@
       paintBoard(overBoard, remoteBoard);
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
-      syncJumpButton();
       syncFlyHud();
     }
 
@@ -1082,7 +1067,6 @@
               powerLeft = 0; updatePowerHud();
               if (wasMouse) {
                 pointerHeld = false;
-                syncJumpButton();
                 syncFlyHud();
               }
             } else powerBar.style.width = `${(powerLeft / powerMax) * 100}%`;
@@ -1157,11 +1141,15 @@
             : Math.max(L.spacing, (lastPipe ? pipeSpan(lastPipe) : PIPE_W) + 150);
           spawnPipe((lastPipe ? lastPipe.x : width) + spacing);
         }
-        for (const orb of orbs) orb.x -= speed * dt;
-        orbs = orbs.filter((orb) => orb.x > -28);
-        for (let i = orbs.length - 1; i >= 0; i -= 1) {
-          if (Math.hypot(orbs[i].x - birdX, orbs[i].y - birdY) < hitRadius() + ORB_R + 6) {
-            collect(orbs[i]); orbs.splice(i, 1);
+        if (practice) {
+          orbs = [];
+        } else {
+          for (const orb of orbs) orb.x -= speed * dt;
+          orbs = orbs.filter((orb) => orb.x > -28);
+          for (let i = orbs.length - 1; i >= 0; i -= 1) {
+            if (Math.hypot(orbs[i].x - birdX, orbs[i].y - birdY) < hitRadius() + ORB_R + 6) {
+              collect(orbs[i]); orbs.splice(i, 1);
+            }
           }
         }
         for (const bit of starBits) bit.x -= speed * dt;
@@ -1922,19 +1910,14 @@
         ctx.fill();
         ctx.restore();
       }
-      for (const orb of orbs) {
-        const pulse = 1 + Math.sin(performance.now() / 140 + orb.x * 0.05) * 0.1;
-        const color = POWERS[orb.type].color;
-        const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, ORB_R * 3);
-        g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * 3.2 * pulse, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * pulse, 0, Math.PI * 2); ctx.fill();
-        if (practice && ORB_LABELS[orb.type]) {
-          ctx.fillStyle = "rgba(232,238,252,0.92)";
-          ctx.font = "bold 11px Segoe UI, sans-serif";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "top";
-          ctx.fillText(ORB_LABELS[orb.type], orb.x, orb.y + ORB_R * 1.7);
+      if (!practice) {
+        for (const orb of orbs) {
+          const pulse = 1 + Math.sin(performance.now() / 140 + orb.x * 0.05) * 0.1;
+          const color = POWERS[orb.type].color;
+          const g = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, ORB_R * 3);
+          g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * 3.2 * pulse, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = color; ctx.beginPath(); ctx.arc(orb.x, orb.y, ORB_R * pulse, 0, Math.PI * 2); ctx.fill();
         }
       }
 
@@ -2067,7 +2050,8 @@
       mouseX = event.clientX;
     });
     window.addEventListener("pointerdown", (event) => {
-      if (studioOpen || event.target.closest("button, input, select, #studio")) return;
+      const target = event.target;
+      if (studioOpen || (target instanceof Element && target.closest("button, input, select, #studio, #practicePowers"))) return;
       event.preventDefault();
       mouseY = event.clientY;
       mouseX = event.clientX;
@@ -2104,16 +2088,16 @@
       if (studioOpen) { studioJump(); return; }
       if (!usingMouse()) flap();
     });
-    jumpBtn.addEventListener("click", (event) => { event.stopPropagation(); flap(); });
     leaveBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       leavePractice();
     });
-    practicePowers.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-power]");
+    practicePowers.addEventListener("pointerdown", (event) => {
+      const btn = event.target instanceof Element ? event.target.closest("[data-power]") : null;
       if (!btn || !practice || mode !== "play") return;
+      event.preventDefault();
       event.stopPropagation();
-      applyPracticePower(btn.getAttribute("data-power") || null, true);
+      applyPracticePower(btn.getAttribute("data-power"), true);
     });
     document.getElementById("playBtn").addEventListener("click", (event) => {
       event.stopPropagation();
@@ -2131,7 +2115,7 @@
     document.getElementById("menuBtn").addEventListener("click", (event) => {
       event.stopPropagation(); overPanel.classList.add("hidden"); startPanel.classList.remove("hidden");
       practice = false; leaveBtn.classList.add("hidden");
-      mode = "ready"; renderBoard(startBoard); syncJumpButton(); syncFlyHud(); updateMeta();
+      mode = "ready"; renderBoard(startBoard); syncFlyHud(); updateMeta();
       syncPracticePowerUi();
     });
     document.getElementById("studioBtn").addEventListener("click", (event) => {
