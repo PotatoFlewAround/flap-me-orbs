@@ -14,7 +14,7 @@ Click, tap, or press Space to jump.
 - **Practice** — a slow looping course. Crashes bounce you back. Leave with **Menu** or **Esc**
 - **Modify your hero** — change shape, colors, glow, and pose. That look is saved with your leaderboard score
 
-Scores stay on this machine.
+Scores are shared online for everyone on the public link.
 
 ### Pickups
 
@@ -36,7 +36,7 @@ Open the GitHub Pages link:
 
 https://potatoflewaround.github.io/flap-me-orbs/
 
-Anyone with that URL can play in a browser. Scores stay in that visitor’s browser.
+Anyone with that URL can play in a browser. The leaderboard is shared.
 
 ## Run the game
 

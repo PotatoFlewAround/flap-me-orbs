@@ -250,6 +250,8 @@
       <button id="menuBtn" class="ghost" type="button">Menu</button>
     </section>
   </div>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js"></script>
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -455,39 +457,89 @@
       localStorage.setItem("flux-bird-look", JSON.stringify(look));
     }
 
-    function loadBoard() {
-      try { return JSON.parse(localStorage.getItem("flux-bird-board") || "[]"); }
-      catch { return []; }
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7RTpSZOQrGEYIZU8H6GlbRpIuOMLyP1s",
+      authDomain: "flap-me-orbs.firebaseapp.com",
+      projectId: "flap-me-orbs",
+      storageBucket: "flap-me-orbs.firebasestorage.app",
+      messagingSenderId: "887455906735",
+      appId: "1:887455906735:web:7ce3c8309ed58d198d8d5a",
+    };
+    let scoreDb = null;
+    let remoteBoard = [];
+
+    function initScoreDb() {
+      if (typeof firebase === "undefined") return;
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        scoreDb = firebase.firestore();
+      } catch {
+        scoreDb = null;
+      }
     }
-    function renderBoard(target) {
-      const rows = loadBoard();
+
+    function cacheLocalBoard(rows) {
+      try { localStorage.setItem("flux-bird-board", JSON.stringify(rows.slice(0, 10))); }
+      catch { /* ignore quota */ }
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[ch]));
+    }
+
+    async function fetchBoard() {
+      if (scoreDb) {
+        try {
+          const snap = await scoreDb.collection("scores").orderBy("score", "desc").limit(10).get();
+          remoteBoard = snap.docs.map((doc) => doc.data());
+          cacheLocalBoard(remoteBoard);
+          return remoteBoard;
+        } catch { /* use cache */ }
+      }
+      try { remoteBoard = JSON.parse(localStorage.getItem("flux-bird-board") || "[]"); }
+      catch { remoteBoard = []; }
+      return remoteBoard;
+    }
+
+    function paintBoard(target, rows) {
       if (!rows.length) {
         target.innerHTML = "<li>No scores yet</li>";
         return;
       }
       target.innerHTML = rows.map((row, index) => (
-        `<li class="board-row"><canvas class="board-orb" width="36" height="36" data-i="${index}"></canvas><span>${row.name} · ${row.score} · ${row.level}</span></li>`
+        `<li class="board-row"><canvas class="board-orb" width="36" height="36" data-i="${index}"></canvas><span>${escapeHtml(row.name)} · ${row.score} · ${escapeHtml(row.level || "")}</span></li>`
       )).join("");
       target.querySelectorAll(".board-orb").forEach((canvasNode, index) => {
         paintBoardOrb(canvasNode, rows[index].look);
       });
     }
-    function qualify(value) {
-      const rows = loadBoard();
-      return value > 0 && (rows.length < 10 || value > rows[rows.length - 1].score);
+
+    async function renderBoard(target) {
+      target.innerHTML = "<li>Loading…</li>";
+      const rows = await fetchBoard();
+      paintBoard(target, rows);
     }
-    function saveScore(name, value) {
-      const rows = loadBoard();
-      rows.push({
+
+    function qualify(value) {
+      return value > 0 && (remoteBoard.length < 10 || value > Number(remoteBoard[remoteBoard.length - 1].score || 0));
+    }
+
+    async function saveScore(name, value) {
+      const row = {
         name: name.slice(0, 14) || "Pilot",
-        score: value,
+        score: Math.floor(value),
         level: LEVELS[levelForScore(value)].name,
         look: snapshotLook(),
-      });
-      rows.sort((a, b) => b.score - a.score);
-      localStorage.setItem("flux-bird-board", JSON.stringify(rows.slice(0, 10)));
-      renderBoard(startBoard);
-      renderBoard(overBoard);
+        at: Date.now(),
+      };
+      if (scoreDb) {
+        try { await scoreDb.collection("scores").add(row); }
+        catch { /* keep going and refresh */ }
+      }
+      await renderBoard(startBoard);
+      await renderBoard(overBoard);
     }
 
     function beep(freq, duration, type, gain) {
@@ -889,9 +941,11 @@
       if (score > best) { best = score; localStorage.setItem("flux-bird-best", String(best)); }
       updateMeta();
       overText.textContent = `Score ${score} · ${level().name}`;
-      pendingScore = qualify(score) ? score : 0;
-      saveRow.classList.toggle("hidden", !pendingScore);
-      renderBoard(overBoard);
+      fetchBoard().then(() => {
+        pendingScore = qualify(score) ? score : 0;
+        saveRow.classList.toggle("hidden", !pendingScore);
+        paintBoard(overBoard, remoteBoard);
+      });
       overPanel.classList.remove("hidden");
       powerHud.classList.add("hidden");
       syncJumpButton();
@@ -1860,6 +1914,7 @@
       saveScore(name, pendingScore); pendingScore = 0; saveRow.classList.add("hidden");
     });
 
+    initScoreDb();
     resize(); renderBoard(startBoard); updateMeta(); syncFlyHud(); syncLookControls(); requestAnimationFrame(loop);
   </script>
 </body>
