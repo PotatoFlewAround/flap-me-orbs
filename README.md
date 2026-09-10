@@ -1,8 +1,10 @@
 # Flap me Orbs
 
-A tribute to Dong Nguyen's Flappy Bird. Thanks, Dong.
+Vibecoded the hell out of this in a day. This is a tribute to Dong Nguyen's Flappy Bird. Thanks, Dong!
 
 Steer your hero through pipes and star trails. Jump to fly. Rare power-up orbs change how you move. The code is yours to use, fork, and remix. GG!
+
+-Rance
 
 ## How to play
 
@@ -58,7 +60,4 @@ Edit `game.html`, close the running game, then:
 npx electron-builder --win
 ```
 
-The rebuild cannot overwrite `dist\win-unpacked` while the exe is open.
-
-For Steam, upload `dist\win-unpacked` as a depot and set the launch executable to `Flap me Orbs.exe`.
 

@@ -159,7 +159,6 @@
     </div>
     <div class="legend" aria-label="Orb legend">
       <h2>Power-ups</h2>
-      <div class="legend-row"><span class="legend-dot" style="background:#ffe9a8;color:#ffe9a8"></span>Stars +1</div>
       <div class="legend-row"><span class="legend-dot" style="background:#f4f7ff;color:#f4f7ff"></span>White mouse-drag</div>
       <div class="legend-row"><span class="legend-dot" style="background:#ff8ac8;color:#ff8ac8"></span>Pink shield</div>
       <div class="legend-row"><span class="legend-dot" style="background:#7ee7ff;color:#7ee7ff"></span>Cyan drift</div>
@@ -279,8 +278,9 @@
     const BIRD_R = 16, PIPE_W = 70, GROUND = 88, ORB_R = 11, STAR_R = 6, FLAP = -620, MAX_FALL = 920;
     const TOP_WALL_KINDS = ["brick", "ladder", "cloud"];
     const BOT_WALL_KINDS = ["building", "brick", "tree"];
-    const BRICK_ROW_H = 11;
-    const BRICK_COL_W = 20;
+    const BRICK_ROW_H = 10;
+    const BRICK_COL_W = 14;
+    const BRICK_MORTAR = 1;
     const LADDER_RUNG_GAP = 16;
     const POWER_ORB_CHANCE = 0.13;
     const STAR_TRAIL_CHANCE = 0.8;
@@ -524,20 +524,23 @@
       const L = level();
       const lesson = practice ? PRACTICE_COURSE[practiceSpawnIndex % PRACTICE_COURSE.length] : null;
       if (practice) practiceSpawnIndex += 1;
-      const gap = lesson ? lesson.gap : L.gap;
+      const gapJitter = practice ? 0 : (Math.random() - 0.5) * 28;
+      const gap = Math.max(118, (lesson ? lesson.gap : L.gap) + gapJitter);
       const margin = 86;
       const maxTop = height - GROUND - margin - gap;
       const top = practice
         ? Math.max(margin, Math.min(maxTop, height * 0.36 - gap * 0.2 + (Math.random() - 0.5) * 36))
         : margin + Math.random() * Math.max(30, maxTop - margin);
+      const seed = Math.random();
+      const topWall = makeTopWall(pickWallKind(TOP_WALL_KINDS), seed, top);
+      const botWall = makeBotWall(pickWallKind(BOT_WALL_KINDS), seed + 1, height - GROUND - (top + gap));
       pipes.push({
         x, top, gap, passed: false,
         hint: lesson ? lesson.hint : null,
         title: lesson ? lesson.title : null,
         applied: false,
-        topKind: pickWallKind(TOP_WALL_KINDS),
-        botKind: pickWallKind(BOT_WALL_KINDS),
-        seed: Math.random(),
+        topWall,
+        botWall,
       });
       if (lesson) {
         if (lesson.orb) {
@@ -859,10 +862,9 @@
       const radius = hitRadius();
       birdY = Math.max(radius + 10, Math.min(height - GROUND - radius - 10, birdY));
       for (const pipe of pipes) {
-        const inX = birdX + radius + 10 > pipe.x && birdX - radius - 10 < pipe.x + PIPE_W;
-        if (inX) {
+        if (hitsPipe(pipe, birdX, birdY, radius + 10)) {
           birdY = pipe.top + pipe.gap / 2;
-          birdX = Math.max(18, pipe.x - radius - 8);
+          birdX = Math.max(18, pipeLeft(pipe) - radius - 8);
         }
       }
       burst(birdX, birdY, 14, "#d7e7ff");
@@ -981,17 +983,19 @@
             }
             if (pipe.hint) showBanner(pipe.hint);
           }
-          if (!pipe.passed && pipe.x + PIPE_W < birdX) {
+          if (!pipe.passed && pipeRight(pipe) < birdX) {
             pipe.passed = true;
             addScore(power === "gold" ? 2 : 1);
             burst(birdX + 16, birdY, 9, power === "gold" ? "#ffe08a" : "#d7e7ff");
             beep(760 + score * 10, 0.08, "triangle", 0.045);
           }
         }
-        pipes = pipes.filter((pipe) => pipe.x > -PIPE_W - 8);
+        pipes = pipes.filter((pipe) => pipeRight(pipe) > -24);
         while (pipes.length < 3) {
           const lastPipe = pipes[pipes.length - 1];
-          const spacing = practice ? 360 : L.spacing;
+          const spacing = practice
+            ? 380
+            : Math.max(L.spacing, (lastPipe ? pipeSpan(lastPipe) : PIPE_W) + 150);
           spawnPipe((lastPipe ? lastPipe.x : width) + spacing);
         }
         for (const orb of orbs) orb.x -= speed * dt;
@@ -1012,9 +1016,7 @@
         const radius = hitRadius();
         if (birdY < radius || birdY > height - GROUND - radius) crash();
         for (const pipe of pipes) {
-          const inX = birdX + radius > pipe.x && birdX - radius < pipe.x + PIPE_W;
-          const inGap = birdY - radius > pipe.top && birdY + radius < pipe.top + pipe.gap;
-          if (inX && !inGap) crash();
+          if (hitsPipe(pipe, birdX, birdY, radius)) crash();
         }
       }
       for (const p of particles) { p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 380 * dt; }
@@ -1086,170 +1088,460 @@
       return value - Math.floor(value);
     }
 
-    function clipWall(x, y, w, h, paint) {
+    function wallRange(seed, index, min, max) {
+      return min + wallRand(seed, index) * (max - min);
+    }
+
+    function wallInt(seed, index, min, max) {
+      return Math.floor(wallRange(seed, index, min, max + 1));
+    }
+
+    function pipeCenter(pipe) {
+      return pipe.x + PIPE_W / 2;
+    }
+
+    function pipeSpan(pipe) {
+      const topSpan = pipe.topWall ? pipe.topWall.span : PIPE_W;
+      const botSpan = pipe.botWall ? pipe.botWall.span : PIPE_W;
+      return Math.max(topSpan, botSpan, PIPE_W);
+    }
+
+    function pipeLeft(pipe) {
+      return pipeCenter(pipe) - pipeSpan(pipe) / 2;
+    }
+
+    function pipeRight(pipe) {
+      return pipeCenter(pipe) + pipeSpan(pipe) / 2;
+    }
+
+    function makeTopWall(kind, seed, topH) {
+      if (kind === "cloud") {
+        const blobW = wallRange(seed, 0, 100, 158);
+        const massH = Math.min(topH * 0.7, wallRange(seed, 1, 52, 88));
+        const droop = wallRange(seed, 2, 4, 16);
+        const puffs = [{
+          ox: 0,
+          oy: droop - massH * 0.18,
+          rx: blobW * 0.5,
+          ry: massH * 0.28,
+        }];
+        const lower = wallInt(seed, 3, 4, 6);
+        for (let i = 0; i < lower; i += 1) {
+          const t = lower === 1 ? 0.5 : i / (lower - 1);
+          puffs.push({
+            ox: (t - 0.5) * blobW * 0.78,
+            oy: droop - massH * wallRange(seed, i + 10, 0.2, 0.48),
+            rx: wallRange(seed, i + 20, blobW * 0.16, blobW * 0.28),
+            ry: wallRange(seed, i + 30, massH * 0.22, massH * 0.4),
+          });
+        }
+        const upper = wallInt(seed, 4, 3, 5);
+        for (let i = 0; i < upper; i += 1) {
+          const t = upper === 1 ? 0.5 : i / (upper - 1);
+          puffs.push({
+            ox: (t - 0.5) * blobW * 0.52,
+            oy: droop - massH * wallRange(seed, i + 40, 0.48, 0.86),
+            rx: wallRange(seed, i + 50, blobW * 0.12, blobW * 0.22),
+            ry: wallRange(seed, i + 60, massH * 0.2, massH * 0.34),
+          });
+        }
+        return { kind, seed, puffs, span: blobW + 20 };
+      }
+      if (kind === "ladder") {
+        const width = wallInt(seed, 0, 28, 42);
+        return { kind, seed, width, span: width + 18 };
+      }
+      const width = wallInt(seed, 0, 46, 86);
+      const capW = width + wallInt(seed, 1, 10, 26);
+      const topW = Math.max(36, width - wallInt(seed, 2, 4, 18));
+      return { kind, seed, width, capW, topW, span: capW };
+    }
+
+    function makeBotWall(kind, seed, botH) {
+      if (kind === "building") {
+        const baseW = wallInt(seed, 0, 58, 118);
+        const upperW = Math.max(40, Math.round(baseW * wallRange(seed, 1, 0.62, 0.88)));
+        const roofStyle = wallRand(seed, 2) > 0.55 ? "peak" : "flat";
+        const roofH = wallInt(seed, 3, 12, 26);
+        const peakH = roofStyle === "peak" ? wallInt(seed, 4, 10, 22) : 0;
+        const upperFrac = wallRange(seed, 5, 0.28, 0.48);
+        const antenna = wallRand(seed, 6) > 0.5;
+        return { kind, seed, baseW, upperW, roofStyle, roofH, peakH, upperFrac, antenna, span: baseW + 8 };
+      }
+      if (kind === "tree") {
+        const trunkW = wallInt(seed, 0, 16, 30);
+        const canopyR = wallInt(seed, 1, 28, 54);
+        const branches = [];
+        const mainCount = wallInt(seed, 40, 6, 9);
+        for (let i = 0; i < mainCount; i += 1) {
+          const side = i % 2 === 0 ? -1 : 1;
+          const startY = wallRange(seed, i + 50, 34, Math.min(botH * 0.58, 150));
+          const length = wallRange(seed, i + 60, 32, 78);
+          const lift = wallRange(seed, i + 70, 0.4, 0.9);
+          const spread = wallRange(seed, i + 80, 0.6, 1.2);
+          const endX = side * length * spread;
+          const endY = startY - length * lift;
+          branches.push({
+            startX: 0,
+            startY,
+            midX: endX * 0.48,
+            midY: startY - length * lift * 0.32,
+            endX,
+            endY,
+            width: wallRange(seed, i + 90, 4, 8),
+          });
+        }
+        const twigCount = wallInt(seed, 41, 5, 8);
+        for (let i = 0; i < twigCount; i += 1) {
+          const parent = branches[i % branches.length];
+          const side = parent.endX >= 0 ? 1 : -1;
+          branches.push({
+            startX: parent.endX,
+            startY: parent.endY,
+            midX: parent.endX + side * 10,
+            midY: parent.endY - 8,
+            endX: parent.endX + side * wallRange(seed, i + 110, 14, 28),
+            endY: parent.endY - wallRange(seed, i + 120, 10, 24),
+            width: wallRange(seed, i + 130, 2, 4),
+          });
+        }
+        const canopies = [];
+        const count = wallInt(seed, 2, 5, 8);
+        for (let i = 0; i < count; i += 1) {
+          canopies.push({
+            ox: (wallRand(seed, i + 10) - 0.5) * canopyR * 1.15,
+            oy: wallRange(seed, i + 20, 8, canopyR * 0.95),
+            r: canopyR * wallRange(seed, i + 30, 0.48, 0.95),
+          });
+        }
+        branches.forEach((branch, i) => {
+          if (i % 2 === 0) {
+            canopies.push({
+              ox: branch.endX,
+              oy: Math.max(6, branch.endY),
+              r: canopyR * wallRange(seed, i + 140, 0.28, 0.5),
+            });
+          }
+        });
+        return { kind, seed, trunkW, canopies, branches, span: Math.max(canopyR * 2.3, 90) };
+      }
+      const width = wallInt(seed, 0, 44, 92);
+      const capW = width + wallInt(seed, 1, 8, 22);
+      const footW = width + wallInt(seed, 2, 0, 16);
+      return { kind, seed, width, capW, footW, span: Math.max(capW, footW) };
+    }
+
+    function circleHitsRect(cx, cy, radius, x, y, w, h) {
+      const nx = Math.max(x, Math.min(cx, x + w));
+      const ny = Math.max(y, Math.min(cy, y + h));
+      return Math.hypot(cx - nx, cy - ny) < radius;
+    }
+
+    function circleHitsEllipse(cx, cy, radius, ex, ey, rx, ry) {
+      const dx = cx - ex;
+      const dy = cy - ey;
+      const erx = rx + radius;
+      const ery = ry + radius;
+      return (dx * dx) / (erx * erx) + (dy * dy) / (ery * ery) < 1;
+    }
+
+    function circleHitsSegment(cx, cy, radius, x1, y1, x2, y2, halfW) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((cx - x1) * dx + (cy - y1) * dy) / len2));
+      return Math.hypot(cx - (x1 + t * dx), cy - (y1 + t * dy)) < radius + halfW;
+    }
+
+    function hitsTopWall(wall, mid, top, bx, by, radius) {
+      if (!wall) return circleHitsRect(bx, by, radius, mid - PIPE_W / 2, -40, PIPE_W, top + 40);
+      if (wall.kind === "cloud") {
+        return wall.puffs.some((puff) => (
+          circleHitsEllipse(bx, by, radius, mid + puff.ox, top + puff.oy, puff.rx, puff.ry)
+        ));
+      }
+      if (wall.kind === "ladder") {
+        return circleHitsRect(bx, by, radius, mid - wall.width / 2, -40, wall.width, top + 48);
+      }
+      return circleHitsRect(bx, by, radius, mid - wall.topW / 2, -40, wall.topW, top + 24)
+        || circleHitsRect(bx, by, radius, mid - wall.capW / 2, top - 16, wall.capW, 18)
+        || circleHitsRect(bx, by, radius, mid - wall.width / 2, 0, wall.width, top);
+    }
+
+    function hitsBotWall(wall, mid, botY, botH, bx, by, radius) {
+      if (!wall) return circleHitsRect(bx, by, radius, mid - PIPE_W / 2, botY, PIPE_W, botH);
+      if (wall.kind === "tree") {
+        const trunkHit = circleHitsRect(bx, by, radius, mid - wall.trunkW / 2, botY + 22, wall.trunkW, botH);
+        const leafHit = wall.canopies.some((canopy) => (
+          circleHitsEllipse(bx, by, radius, mid + canopy.ox, botY + canopy.oy, canopy.r, canopy.r * 0.8)
+        ));
+        const branchHit = (wall.branches || []).some((branch) => (
+          circleHitsSegment(
+            bx, by, radius,
+            mid + (branch.startX || 0), botY + branch.startY,
+            mid + branch.endX, botY + branch.endY,
+            branch.width * 0.55
+          )
+        ));
+        return trunkHit || leafHit || branchHit;
+      }
+      if (wall.kind === "building") {
+        const upperH = Math.max(36, botH * wall.upperFrac);
+        const baseTop = botY + wall.roofH + upperH;
+        const peakHit = wall.peakH > 0
+          && circleHitsRect(bx, by, radius, mid - wall.upperW * 0.22, botY - wall.peakH, wall.upperW * 0.44, wall.peakH + 6);
+        return peakHit
+          || circleHitsRect(bx, by, radius, mid - wall.upperW / 2 - 4, botY, wall.upperW + 8, wall.roofH + 8)
+          || circleHitsRect(bx, by, radius, mid - wall.upperW / 2, botY + wall.roofH, wall.upperW, upperH + 8)
+          || circleHitsRect(bx, by, radius, mid - wall.baseW / 2, baseTop - 6, wall.baseW, botH);
+      }
+      return circleHitsRect(bx, by, radius, mid - wall.capW / 2, botY, wall.capW, 18)
+        || circleHitsRect(bx, by, radius, mid - wall.width / 2, botY + 10, wall.width, botH)
+        || circleHitsRect(bx, by, radius, mid - wall.footW / 2, botY + botH - 22, wall.footW, 28);
+    }
+
+    function hitsPipe(pipe, bx, by, radius) {
+      const mid = pipeCenter(pipe);
+      const botY = pipe.top + pipe.gap;
+      const botH = height - GROUND - botY;
+      return hitsTopWall(pipe.topWall, mid, pipe.top, bx, by, radius)
+        || hitsBotWall(pipe.botWall, mid, botY, botH, bx, by, radius);
+    }
+
+    function drawBrickRow(w, gy, row, seed) {
+      const stagger = row % 2 === 0 ? 0 : -Math.floor(BRICK_COL_W / 2);
+      const cols = Math.ceil(w / BRICK_COL_W) + 2;
+      for (let col = -1; col < cols; col += 1) {
+        const tint = wallRand(seed, row * 97 + col * 13);
+        ctx.fillStyle = tint > 0.66 ? "#b25848" : tint > 0.33 ? "#934536" : "#7a3a2e";
+        ctx.fillRect(
+          col * BRICK_COL_W + stagger + BRICK_MORTAR,
+          gy + BRICK_MORTAR,
+          BRICK_COL_W - BRICK_MORTAR * 2,
+          BRICK_ROW_H - BRICK_MORTAR * 2
+        );
+      }
+    }
+
+    function drawBrickPattern(w, h, seed, align) {
+      ctx.fillStyle = "#3a221c";
+      ctx.fillRect(0, 0, w, h);
+      if (align === "bottom") {
+        let row = 0;
+        for (let gy = h - BRICK_ROW_H; gy > -BRICK_ROW_H; gy -= BRICK_ROW_H, row += 1) {
+          drawBrickRow(w, gy, row, seed);
+        }
+        return;
+      }
+      let row = 0;
+      for (let gy = 0; gy < h; gy += BRICK_ROW_H, row += 1) {
+        drawBrickRow(w, gy, row, seed);
+      }
+    }
+
+    function fillBrickPath(path, left, top, w, h, seed, align) {
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(x, y, w, h);
+      path();
       ctx.clip();
-      paint();
+      ctx.translate(left, top);
+      drawBrickPattern(w, h, seed, align);
+      ctx.restore();
+      ctx.save();
+      path();
+      ctx.strokeStyle = "rgba(20,10,8,0.45)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
       ctx.restore();
     }
 
-    function washWall(x, y, w, h, color) {
-      ctx.fillStyle = color;
-      ctx.globalAlpha = 0.28;
+    function drawWindows(x, y, w, h, seed, levelColor) {
+      const cols = Math.max(2, Math.floor((w - 10) / 20));
+      const windowW = 11;
+      const windowH = 9;
+      const gutter = (w - cols * windowW) / (cols + 1);
+      let row = 0;
+      for (let gy = y + 8; gy < y + h - 16; gy += 16, row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const lit = wallRand(seed, row * 11 + col) > 0.32;
+          ctx.fillStyle = lit ? "rgba(255, 214, 110, 0.88)" : "rgba(16, 22, 34, 0.92)";
+          ctx.fillRect(x + gutter + col * (windowW + gutter), gy, windowW, windowH);
+        }
+      }
+      ctx.fillStyle = levelColor;
+      ctx.globalAlpha = 0.16;
       ctx.fillRect(x, y, w, h);
       ctx.globalAlpha = 1;
     }
 
-    function drawBrickPattern(x, y, w, h, seed) {
-      ctx.fillStyle = "#2a1614";
-      ctx.fillRect(x, y, w, h);
-      let row = 0;
-      for (let gy = y; gy < y + h + BRICK_ROW_H; gy += BRICK_ROW_H, row += 1) {
-        const offset = row % 2 === 0 ? 0 : -BRICK_COL_W * 0.5;
-        for (let gx = x + offset; gx < x + w + BRICK_COL_W; gx += BRICK_COL_W) {
-          const tint = wallRand(seed, row * 31 + gx);
-          ctx.fillStyle = tint > 0.7 ? "#a24a3c" : tint > 0.35 ? "#8a3d32" : "#73342b";
-          ctx.fillRect(gx + 1, gy + 1, BRICK_COL_W - 2, BRICK_ROW_H - 2);
-        }
-      }
+    function drawBrickTop(mid, top, wall) {
+      const left = mid - wall.capW / 2;
+      const boxW = wall.capW;
+      const boxH = top + 28;
+      fillBrickPath(() => {
+        ctx.beginPath();
+        ctx.moveTo(mid - wall.topW / 2, -24);
+        ctx.lineTo(mid + wall.topW / 2, -24);
+        ctx.lineTo(mid + wall.capW / 2, top);
+        ctx.lineTo(mid - wall.capW / 2, top);
+        ctx.closePath();
+      }, left, -24, boxW, boxH, wall.seed, "bottom");
     }
 
-    function drawBrickWall(x, y, w, h, seed, levelColor) {
-      clipWall(x, y, w, h, () => {
-        drawBrickPattern(x, y, w, h, seed);
-        ctx.fillStyle = "rgba(0,0,0,0.28)";
-        ctx.fillRect(x, y, 5, h);
-        ctx.fillStyle = "rgba(255,255,255,0.08)";
-        ctx.fillRect(x + w - 5, y, 5, h);
-        washWall(x, y, w, h, levelColor);
-      });
+    function drawBrickBot(mid, botY, botH, wall) {
+      const left = mid - Math.max(wall.capW, wall.footW) / 2;
+      const boxW = Math.max(wall.capW, wall.footW);
+      fillBrickPath(() => {
+        ctx.beginPath();
+        ctx.moveTo(mid - wall.capW / 2, botY);
+        ctx.lineTo(mid + wall.capW / 2, botY);
+        ctx.lineTo(mid + wall.width / 2, botY + 18);
+        ctx.lineTo(mid + wall.footW / 2, botY + botH);
+        ctx.lineTo(mid - wall.footW / 2, botY + botH);
+        ctx.lineTo(mid - wall.width / 2, botY + 18);
+        ctx.closePath();
+      }, left, botY, boxW, botH, wall.seed, "top");
     }
 
-    function drawLadderWall(x, y, w, h, levelColor) {
-      clipWall(x, y, w, h, () => {
-        ctx.fillStyle = "#151c28";
-        ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = "#243044";
-        ctx.fillRect(x + 7, y, w - 14, h);
+    function drawLadderWall(mid, top, wall) {
+      const x = mid - wall.width / 2;
+      const h = top + 18;
+      ctx.fillStyle = "#6f5636";
+      ctx.fillRect(x, -20, 5, h);
+      ctx.fillRect(x + wall.width - 5, -20, 5, h);
+      ctx.fillStyle = "#d2b07a";
+      ctx.fillRect(x + 1, -20, 3, h);
+      ctx.fillRect(x + wall.width - 4, -20, 3, h);
+      for (let gy = -8; gy < top; gy += LADDER_RUNG_GAP) {
         ctx.fillStyle = "#6f5636";
-        ctx.fillRect(x + 12, y, 5, h);
-        ctx.fillRect(x + w - 17, y, 5, h);
-        ctx.fillStyle = "#d2b07a";
-        ctx.fillRect(x + 13, y, 3, h);
-        ctx.fillRect(x + w - 16, y, 3, h);
-        for (let gy = y + 8; gy < y + h; gy += LADDER_RUNG_GAP) {
-          ctx.fillStyle = "#6f5636";
-          ctx.fillRect(x + 12, gy, w - 24, 4);
-          ctx.fillStyle = "#e0c48a";
-          ctx.fillRect(x + 12, gy, w - 24, 2);
-        }
-        washWall(x, y, w, h, levelColor);
+        ctx.fillRect(x, gy, wall.width, 4);
+        ctx.fillStyle = "#e0c48a";
+        ctx.fillRect(x, gy, wall.width, 2);
+      }
+      ctx.fillStyle = "#8a6a3e";
+      ctx.fillRect(x - 6, top - 5, wall.width + 12, 7);
+    }
+
+    function drawCloudWall(mid, top, wall) {
+      wall.puffs.forEach((puff) => {
+        const px = mid + puff.ox;
+        const py = top + puff.oy;
+        ctx.fillStyle = "rgba(148, 168, 190, 0.28)";
+        ctx.beginPath();
+        ctx.ellipse(px + 3, py + 5, puff.rx * 1.02, puff.ry * 1.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      wall.puffs.forEach((puff) => {
+        const px = mid + puff.ox;
+        const py = top + puff.oy;
+        const body = ctx.createRadialGradient(px - puff.rx * 0.25, py - puff.ry * 0.35, puff.rx * 0.1, px, py + puff.ry * 0.15, puff.rx);
+        body.addColorStop(0, "#ffffff");
+        body.addColorStop(0.45, "#eef3f8");
+        body.addColorStop(1, "#c5d3e4");
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.ellipse(px, py, puff.rx, puff.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      wall.puffs.forEach((puff) => {
+        const px = mid + puff.ox - puff.rx * 0.22;
+        const py = top + puff.oy - puff.ry * 0.28;
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.beginPath();
+        ctx.ellipse(px, py, puff.rx * 0.38, puff.ry * 0.32, 0, 0, Math.PI * 2);
+        ctx.fill();
       });
     }
 
-    function drawCloudWall(x, y, w, h, seed, levelColor) {
-      clipWall(x, y, w, h, () => {
-        ctx.fillStyle = "#c5d6ea";
-        ctx.fillRect(x, y, w, h);
-        for (let i = 0; i < 10; i += 1) {
-          const px = x + w * (0.12 + wallRand(seed, i) * 0.76);
-          const py = y + h * wallRand(seed, i + 20);
-          const radius = 14 + wallRand(seed, i + 40) * 20;
-          const puff = ctx.createRadialGradient(px, py, 0, px, py, radius);
-          puff.addColorStop(0, "rgba(255,255,255,0.96)");
-          puff.addColorStop(1, "rgba(176,198,226,0.2)");
-          ctx.fillStyle = puff;
-          ctx.beginPath();
-          ctx.ellipse(px, py, radius, radius * 0.7, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        for (let i = 0; i < 4; i += 1) {
-          const px = x + 10 + i * (w - 20) / 3;
-          ctx.fillStyle = "#f3f7ff";
-          ctx.beginPath();
-          ctx.ellipse(px, y + h - 7, 15, 11, 0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        washWall(x, y, w, h, levelColor);
-      });
+    function drawBuildingWall(mid, botY, botH, wall, levelColor) {
+      const ground = botY + botH;
+      const upperH = Math.max(36, botH * wall.upperFrac);
+      const baseTop = botY + wall.roofH + upperH;
+      const baseX = mid - wall.baseW / 2;
+      const upperX = mid - wall.upperW / 2;
+      ctx.fillStyle = "#1a2233";
+      ctx.fillRect(baseX, baseTop - 6, wall.baseW, ground - baseTop + 6);
+      ctx.fillStyle = "#263044";
+      ctx.fillRect(upperX, botY + wall.roofH, wall.upperW, upperH + 8);
+      ctx.fillStyle = "#0d121c";
+      if (wall.roofStyle === "peak") {
+        ctx.beginPath();
+        ctx.moveTo(upperX - 6, botY + wall.roofH);
+        ctx.lineTo(mid, botY - wall.peakH);
+        ctx.lineTo(upperX + wall.upperW + 6, botY + wall.roofH);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(upperX - 6, botY, wall.upperW + 12, wall.roofH);
+      }
+      if (wall.antenna) {
+        ctx.fillStyle = "#8b93a6";
+        ctx.fillRect(mid + wall.upperW * 0.18, botY - wall.peakH - 18, 3, 22);
+        ctx.fillRect(mid + wall.upperW * 0.18 - 4, botY - wall.peakH - 18, 10, 3);
+      }
+      drawWindows(upperX + 3, botY + wall.roofH + 6, wall.upperW - 6, upperH - 8, wall.seed, levelColor);
+      drawWindows(baseX + 4, baseTop + 4, wall.baseW - 8, Math.max(20, ground - baseTop - 28), wall.seed + 1, levelColor);
+      ctx.fillStyle = "#10161f";
+      ctx.fillRect(mid - 10, ground - 22, 20, 22);
     }
 
-    function drawBuildingWall(x, y, w, h, seed, levelColor) {
-      clipWall(x, y, w, h, () => {
-        ctx.fillStyle = "#1a2233";
-        ctx.fillRect(x, y, w, h);
-        ctx.fillStyle = "#263044";
-        ctx.fillRect(x + 3, y + 12, w - 6, h);
-        ctx.fillStyle = "#0d121c";
-        ctx.fillRect(x, y, w, 12);
-        ctx.fillStyle = "#3b465c";
-        ctx.fillRect(x + w * 0.62, y + 2, 12, 10);
-        const windowW = 13;
-        const windowH = 10;
-        const cols = 2;
-        const gutter = (w - 8 - cols * windowW) / (cols + 1);
-        let row = 0;
-        for (let gy = y + 20; gy < y + h - 30; gy += 17, row += 1) {
-          for (let col = 0; col < cols; col += 1) {
-            const lit = wallRand(seed, row * 8 + col) > 0.3;
-            ctx.fillStyle = lit ? "rgba(255, 214, 110, 0.88)" : "rgba(16, 22, 34, 0.92)";
-            ctx.fillRect(x + 4 + gutter + col * (windowW + gutter), gy, windowW, windowH);
-          }
-        }
-        ctx.fillStyle = "#10161f";
-        ctx.fillRect(x + w * 0.3, y + h - 24, w * 0.4, 24);
-        ctx.fillStyle = "rgba(255, 214, 110, 0.2)";
-        ctx.fillRect(x + w * 0.44, y + h - 16, 6, 6);
-        washWall(x, y, w, h, levelColor);
-      });
+    function drawBranch(x0, y0, x1, y1, x2, y2, width) {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#5a3820";
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(x1, y1, x2, y2);
+      ctx.stroke();
+      ctx.strokeStyle = "#3d2414";
+      ctx.lineWidth = width * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(x1, y1, x2, y2);
+      ctx.stroke();
     }
 
-    function drawTreeWall(x, y, w, h, seed, levelColor) {
-      clipWall(x, y, w, h, () => {
-        ctx.fillStyle = "#102418";
-        ctx.fillRect(x, y, w, h);
-        const trunkW = w * 0.44;
-        ctx.fillStyle = "#5a3820";
-        ctx.fillRect(x + (w - trunkW) / 2, y + 26, trunkW, h);
-        ctx.fillStyle = "#3d2414";
-        ctx.fillRect(x + (w - trunkW) / 2, y + 26, 5, h);
-        const canopies = [
-          [0.5, 0.1, 0.5],
-          [0.2, 0.2, 0.34],
-          [0.8, 0.18, 0.36],
-          [0.5, 0.3, 0.34],
-          [0.28, 0.44, 0.24],
-          [0.72, 0.46, 0.24],
-        ];
-        canopies.forEach((canopy, index) => {
-          const px = x + w * canopy[0];
-          const py = y + h * Math.min(0.52, canopy[1] + wallRand(seed, index) * 0.04);
-          const radius = w * canopy[2];
-          ctx.fillStyle = index % 2 === 0 ? "#2f8a46" : "#1f6a34";
-          ctx.beginPath();
-          ctx.ellipse(px, py, radius, radius * 0.8, 0, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        washWall(x, y, w, h, levelColor);
+    function drawTreeWall(mid, botY, botH, wall) {
+      const ground = botY + botH;
+      const trunkX = mid - wall.trunkW / 2;
+      ctx.fillStyle = "#5a3820";
+      ctx.beginPath();
+      ctx.moveTo(trunkX + 2, botY + 28);
+      ctx.lineTo(trunkX + wall.trunkW - 2, botY + 28);
+      ctx.lineTo(trunkX + wall.trunkW + 4, ground);
+      ctx.lineTo(trunkX - 4, ground);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#3d2414";
+      ctx.fillRect(trunkX + 2, botY + 28, 4, botH);
+      (wall.branches || []).forEach((branch) => {
+        drawBranch(
+          mid + (branch.startX || 0), botY + branch.startY,
+          mid + branch.midX, botY + branch.midY,
+          mid + branch.endX, botY + branch.endY,
+          branch.width
+        );
+      });
+      wall.canopies.forEach((canopy, index) => {
+        ctx.fillStyle = index % 2 === 0 ? "#2f8a46" : "#1f6a34";
+        ctx.beginPath();
+        ctx.ellipse(mid + canopy.ox, botY + canopy.oy, canopy.r, canopy.r * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
       });
     }
 
     function drawPipePair(pipe, L) {
-      const topY = -24;
-      const topH = pipe.top + 24;
+      const mid = pipeCenter(pipe);
       const botY = pipe.top + pipe.gap;
-      const botH = height - botY;
-      const seed = pipe.seed || 0;
-      const topKind = pipe.topKind || "brick";
-      const botKind = pipe.botKind || "brick";
-      if (topKind === "ladder") drawLadderWall(pipe.x, topY, PIPE_W, topH, L.pipe);
-      else if (topKind === "cloud") drawCloudWall(pipe.x, topY, PIPE_W, topH, seed, L.pipe);
-      else drawBrickWall(pipe.x, topY, PIPE_W, topH, seed, L.pipe);
-      if (botKind === "building") drawBuildingWall(pipe.x, botY, PIPE_W, botH, seed, L.pipe);
-      else if (botKind === "tree") drawTreeWall(pipe.x, botY, PIPE_W, botH, seed, L.pipe);
-      else drawBrickWall(pipe.x, botY, PIPE_W, botH, seed + 1, L.pipe);
+      const botH = height - GROUND - botY;
+      const topWall = pipe.topWall;
+      const botWall = pipe.botWall;
+      if (!topWall || topWall.kind === "brick") drawBrickTop(mid, pipe.top, topWall || { seed: 0, width: PIPE_W, capW: PIPE_W, topW: PIPE_W });
+      else if (topWall.kind === "ladder") drawLadderWall(mid, pipe.top, topWall);
+      else drawCloudWall(mid, pipe.top, topWall);
+      if (!botWall || botWall.kind === "brick") drawBrickBot(mid, botY, botH, botWall || { seed: 1, width: PIPE_W, capW: PIPE_W, footW: PIPE_W });
+      else if (botWall.kind === "building") drawBuildingWall(mid, botY, botH, botWall, L.pipe);
+      else drawTreeWall(mid, botY, botH, botWall);
     }
 
     function draw() {
