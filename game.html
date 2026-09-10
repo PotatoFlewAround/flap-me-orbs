@@ -324,9 +324,8 @@
     const BANNER_PLANE_FLAG_H = 48;
     const BANNER_PLANE_CABLE = 26;
     const BANNER_PLANE_BODY = 54;
-    const DASH_HOLD = 0.18;
-    const DASH_SPEED = 980;
-    const DASH_TIME = 0.16;
+    const DASH_SPEED = 720;
+    const DASH_TRAIL = 0.07;
     const POWERS = {
       shield: { name: "Shield", color: "#ff8ac8", duration: 8, freq: 880 },
       drift: { name: "Drift", color: "#7ee7ff", duration: 6, freq: 420 },
@@ -341,7 +340,7 @@
       drift: "Drift — slower fall",
       tiny: "Tiny — smaller hitbox",
       gold: "Double — extra score",
-      dash: "Dash — hold left click",
+      dash: "Dash — hold to surge",
       mouse: "Mouse — hold and drag",
     };
     const PRACTICE_COURSE = [
@@ -432,7 +431,7 @@
     let pendingScore = 0, bannerT = 0, bannerText = "";
     let mouseY = 0, mouseX = 0, pointerHeld = false;
     let birdVx = 0;
-    let dashHoldTime = -1, dashUsedThisHold = false, dashBoost = 0;
+    let dashHoldTime = 0, dashBoost = 0, dashKeyHeld = false;
     let practice = false, practiceSpawnIndex = 0;
     let practicePower = null;
     let best = Number(localStorage.getItem("flux-bird-best") || 0);
@@ -477,6 +476,7 @@
         powerLeft = spec.duration;
       }
       if (wasMouse && next !== "mouse") pointerHeld = false;
+      if (next !== "dash") stopDash();
       updatePowerHud();
       syncFlyHud();
       syncPracticePowerUi();
@@ -768,7 +768,7 @@
       power = null; powerLeft = 0; shield = false;
       setLevel(0, false); speed = level().speed;
       scoreEl.textContent = "0"; pendingScore = 0;
-      dashHoldTime = -1; dashUsedThisHold = false; dashBoost = 0;
+      dashHoldTime = 0; dashBoost = 0; dashKeyHeld = false;
       practiceSpawnIndex = 0;
       syncFlyHud();
       updatePowerHud(); updateMeta();
@@ -791,6 +791,7 @@
       if (!spec) return;
       if (orb.type === "shield") shield = true;
       const hold = spec.duration * (practice ? 1.35 : 1);
+      if (orb.type !== "dash") stopDash();
       power = orb.type; powerMax = hold; powerLeft = hold;
       burst(orb.x, orb.y, 16, spec.color); beep(spec.freq, 0.12, "sine", 0.06);
       updatePowerHud();
@@ -933,22 +934,14 @@
       nodeCtx.restore();
     }
 
-    function fireDash() {
-      if (mode !== "play" || power !== "dash") return;
-      let dx = mouseX - birdX;
-      let dy = mouseY - birdY;
-      let mag = Math.hypot(dx, dy);
-      if (mag < 12) {
-        dx = 1;
-        dy = -0.28;
-        mag = Math.hypot(dx, dy);
-      }
-      birdVx = (dx / mag) * DASH_SPEED;
-      birdV = (dy / mag) * DASH_SPEED;
-      dashBoost = DASH_TIME;
-      invuln = Math.max(invuln, 0.2);
-      burst(birdX, birdY, 16, "#ff7a4a");
-      beep(260, 0.1, "sawtooth", 0.05);
+    function dashHeld() {
+      return power === "dash" && mode === "play" && (pointerHeld || dashKeyHeld);
+    }
+
+    function stopDash() {
+      dashBoost = 0;
+      dashHoldTime = 0;
+      if (power === "dash") birdVx = 0;
     }
 
     function startGame(asPractice) {
@@ -1073,14 +1066,17 @@
           }
         }
         invuln = Math.max(0, invuln - dt);
-        if (pointerHeld && dashHoldTime >= 0) {
+        if (dashHeld()) {
+          dashBoost = 1;
+          birdVx = DASH_SPEED;
           dashHoldTime += dt;
-          if (power === "dash" && !dashUsedThisHold && dashHoldTime >= DASH_HOLD) {
-            fireDash();
-            dashUsedThisHold = true;
+          if (dashHoldTime >= DASH_TRAIL) {
+            dashHoldTime = 0;
+            burst(birdX - 8, birdY, 4, "#ff7a4a");
           }
+        } else if (dashBoost > 0) {
+          stopDash();
         }
-        if (dashBoost > 0) dashBoost = Math.max(0, dashBoost - dt);
         const L = level();
         const gravity = power === "drift" ? L.gravity * 0.48 : L.gravity;
         if (usingMouse()) {
@@ -2057,7 +2053,6 @@
       mouseX = event.clientX;
       pointerHeld = true;
       dashHoldTime = 0;
-      dashUsedThisHold = false;
       if (usingMouse()) {
         if (mode === "ready" || mode === "over") startGame();
         return;
@@ -2066,13 +2061,11 @@
     });
     window.addEventListener("pointerup", () => {
       pointerHeld = false;
-      dashHoldTime = -1;
-      dashUsedThisHold = false;
+      if (!dashHeld()) stopDash();
     });
     window.addEventListener("pointercancel", () => {
       pointerHeld = false;
-      dashHoldTime = -1;
-      dashUsedThisHold = false;
+      if (!dashHeld()) stopDash();
     });
     window.addEventListener("keydown", (event) => {
       noteBannerCode(event);
@@ -2084,9 +2077,15 @@
       }
       if (event.code !== "Space" && event.code !== "Enter") return;
       event.preventDefault();
+      if (!studioOpen && power === "dash" && mode === "play") dashKeyHeld = true;
       if (event.repeat) return;
       if (studioOpen) { studioJump(); return; }
       if (!usingMouse()) flap();
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.code !== "Space" && event.code !== "Enter") return;
+      dashKeyHeld = false;
+      if (!dashHeld()) stopDash();
     });
     leaveBtn.addEventListener("click", (event) => {
       event.stopPropagation();
